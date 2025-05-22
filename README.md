@@ -1,5 +1,10 @@
 # Kamon
 
+![Example
+ Mon](https://github.com/SakanaAI/Kamon/blob/main/data/mon-white-224/29605.jpg)
+
+立ち浪に真向き兎
+
 Kamon (Mon --- Japanese Family Crest) data from three sources:
 
 1. Edo period Ansei Bukan (Armory of the Ansei Reign Years)
