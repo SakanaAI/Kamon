@@ -1,4 +1,4 @@
-"""
+"""Load the data and present it as a Dataset.
 """
 
 import collections
