@@ -2463,7 +2463,7 @@
 {"description": "五つ鎌車", "images": [{"path": "data/mon-white-224/11703.jpg", "source": "mon_white"}]}
 {"description": "花分銅", "images": [{"path": "data/mon-white-224/3244.jpg", "source": "mon_white"}]}
 {"description": "光臨中陰抱き柏", "images": [{"path": "data/mon-white-224/1453.jpg", "source": "mon_white"}]}
-{"description": "九曜巴", "images": [{"path": "data/mon-white-224/0759.jpg", "source": "mon_white"}]}
+{"description": "九曜巴", "images": [{"path": "data/mon-white-224/0759.jpg", "source": "mon_white"}, {"path": "data/edo/img_281_crest_000.png", "source": "edo"}, {"path": "data/edo/img_280_crest_000.png", "source": "edo"}, {"path": "data/edo/img_282_crest_000.png", "source": "edo"}, {"path": "data/edo/img_284_crest_000.png", "source": "edo"}, {"path": "data/edo/img_283_crest_001.png", "source": "edo"}, {"path": "data/edo/img_284_crest_002.png", "source": "edo"}]}
 {"description": "細輪に五つ蓮の実", "images": [{"path": "data/mon-white-224/30901.jpg", "source": "mon_white"}]}
 {"description": "陰陽分銅", "images": [{"path": "data/mon-white-224/3250.jpg", "source": "mon_white"}]}
 {"description": "違い一重亀甲", "images": [{"path": "data/mon-white-224/4259.jpg", "source": "mon_white"}]}
@@ -5425,7 +5425,6 @@
 {"description": "杵筑笹", "images": [{"path": "data/edo/img_235_crest_000.png", "source": "edo"}, {"path": "data/edo/img_236_crest_000.png", "source": "edo"}]}
 {"description": "那須大久保藤", "images": [{"path": "data/edo/img_163_crest_002.png", "source": "edo"}, {"path": "data/edo/img_163_crest_000.png", "source": "edo"}]}
 {"description": "九つ目結", "images": [{"path": "data/edo/img_211_crest_000.png", "source": "edo"}, {"path": "data/edo/img_210_crest_000.png", "source": "edo"}, {"path": "data/edo/img_210_crest_002.png", "source": "edo"}]}
-{"description": "九曜巴()", "images": [{"path": "data/edo/img_281_crest_000.png", "source": "edo"}, {"path": "data/edo/img_280_crest_000.png", "source": "edo"}, {"path": "data/edo/img_282_crest_000.png", "source": "edo"}, {"path": "data/edo/img_284_crest_000.png", "source": "edo"}, {"path": "data/edo/img_283_crest_001.png", "source": "edo"}, {"path": "data/edo/img_284_crest_002.png", "source": "edo"}]}
 {"description": "糸丸に七五桐", "images": [{"path": "data/edo/img_386_crest_006.png", "source": "edo"}]}
 {"description": "二引両", "images": [{"path": "data/edo/img_350_crest_001.png", "source": "edo"}, {"path": "data/edo/img_349_crest_002.png", "source": "edo"}]}
 {"description": "九字", "images": [{"path": "data/edo/img_295_crest_002.png", "source": "edo"}]}
