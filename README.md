@@ -17,6 +17,8 @@ All of these are "blazoned" with descriptions following the standard methods for
 describing Mon. With the exception of the Wikimedia data, which already came
 with descriptions, all examples were blazoned by hand.
 
+Total dataset size is 7,410 images paired with descriptions.
+
 # Installation
 
 `pip3 install -r requirements.txt`
