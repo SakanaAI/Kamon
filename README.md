@@ -3,7 +3,7 @@
 ![Example
  Mon](https://github.com/SakanaAI/Kamon/blob/main/data/mon-white-224/29605.jpg)
 
-立ち浪に真向き兎
+立ち浪に真向き兎 ('frontwards facing rabbit in a standing wave')
 
 Kamon (Mon --- Japanese Family Crest) data from three sources:
 
