@@ -28,8 +28,7 @@ with descriptions, all examples were blazoned by hand.
 
 For example:
 
-`
-val = kamon_dataset.KamonDataset(division="val", one_hot=False)
+`val = kamon_dataset.KamonDataset(division="val", one_hot=False)
 val[0]
 (tensor([[[1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.],
