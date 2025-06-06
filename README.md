@@ -28,9 +28,9 @@ with descriptions, all examples were blazoned by hand.
 
 For example:
 
-`val = kamon_dataset.KamonDataset(division="val", one_hot=False)
-val[0]
-(tensor([[[1., 1., 1.,  ..., 1., 1., 1.],
+`val = kamon_dataset.KamonDataset(division="val", one_hot=False)`
+`val[0]`
+`(tensor([[[1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.],
 	 ...,
@@ -52,5 +52,5 @@ val[0]
 	 ...,
 	 [1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.],
-	 [1., 1., 1.,  ..., 1., 1., 1.]]]), [49, 1366, 1252])
+	 [1., 1., 1.,  ..., 1., 1., 1.]]]), [49, 1366, 1252])`
 `
