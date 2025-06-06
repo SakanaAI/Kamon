@@ -26,7 +26,8 @@ with descriptions, all examples were blazoned by hand.
 `kamon_dataset.py` contains a wrapper that presents the data as a
 `torch.utils.data.Dataset`.
 
-For example:
+For example, the following loads the validation set. Each entry maps from a tensor representing the image to a
+sequence of vocabulary items corresponding to the phrase describing the crest.
 
     val = kamon_dataset.KamonDataset(division="val", one_hot=False)
     val[0]
