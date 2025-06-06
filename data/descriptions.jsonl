@@ -255,6 +255,7 @@
 {"description": "隅立て撫角に卍", "images": [{"path": "data/mon-white-224/3196.jpg", "source": "mon_white"}]}
 {"description": "小串雁金", "images": [{"path": "data/mon-white-224/1959.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/90162.jpg", "source": "mon_white"}]}
 {"description": "隅切り角に中陰五三桐", "images": [{"path": "data/mon-white-224/23305.jpg", "source": "mon_white"}]}
+{"description": "隅立て角", "images": [{"path": "data/mon-white-224/1781.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/1290.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/08335.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/08400.jpg", "source": "mon_white"}]}
 {"description": "陰四つ目", "images": [{"path": "data/mon-white-224/38725.jpg", "source": "mon_white"}]}
 {"description": "丸に中陰十の木", "images": [{"path": "data/mon-white-224/3828.jpg", "source": "mon_white"}]}
 {"description": "屋島扇", "images": [{"path": "data/mon-white-224/29600.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/05211.jpg", "source": "mon_white"}]}
@@ -1830,6 +1831,7 @@
 {"description": "中野柊", "images": [{"path": "data/mon-white-224/4539.jpg", "source": "mon_white"}]}
 {"description": "筏", "images": [{"path": "data/mon-white-224/01502.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/90014.jpg", "source": "mon_white"}]}
 {"description": "蔓銀杏菱", "images": [{"path": "data/mon-white-224/0039.jpg", "source": "mon_white"}]}
+{"description": "隅立て割違い貝", "images": [{"path": "data/mon-white-224/07601.jpg", "source": "mon_white"}]}
 {"description": "中陰分銅", "images": [{"path": "data/mon-white-224/3242.jpg", "source": "mon_white"}]}
 {"description": "四つ鎌角", "images": [{"path": "data/mon-white-224/11705.jpg", "source": "mon_white"}]}
 {"description": "五七の桐", "images": [{"path": "data/mon-white-224/43725.jpg", "source": "mon_white"}]}
@@ -1973,7 +1975,6 @@
 {"description": "六角橘", "images": [{"path": "data/mon-white-224/24635.jpg", "source": "mon_white"}]}
 {"description": "五つ千鳥", "images": [{"path": "data/mon-white-224/25503.jpg", "source": "mon_white"}, {"path": "data/wiki/Itsutsu_Chidori_inverted.jpg", "source": "wiki"}]}
 {"description": "花園丁子", "images": [{"path": "data/mon-white-224/0830.jpg", "source": "mon_white"}]}
-{"description": "隅立て角", "images": [{"path": "data/mon-white-224/1290.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/08335.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/08400.jpg", "source": "mon_white"}]}
 {"description": "花鉄仙崩し", "images": [{"path": "data/mon-white-224/3487.jpg", "source": "mon_white"}]}
 {"description": "山文字丸", "images": [{"path": "data/mon-white-224/2941.jpg", "source": "mon_white"}]}
 {"description": "花鉄線", "images": [{"path": "data/mon-white-224/3493.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/27903.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/27904.jpg", "source": "mon_white"}]}
@@ -2911,7 +2912,7 @@
 {"description": "枝桜崩し", "images": [{"path": "data/mon-white-224/3670.jpg", "source": "mon_white"}]}
 {"description": "割り松毬", "images": [{"path": "data/mon-white-224/3116.jpg", "source": "mon_white"}]}
 {"description": "丸に剣三つ桃", "images": [{"path": "data/mon-white-224/4679.jpg", "source": "mon_white"}]}
-{"description": "扇井桁", "images": [{"path": "data/mon-white-224/05424.jpg", "source": "mon_white"}]}
+{"description": "扇井桁", "images": [{"path": "data/mon-white-224/05424.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/05434.jpg", "source": "mon_white"}]}
 {"description": "三つ割り唐花に剣花菱", "images": [{"path": "data/mon-white-224/1701.jpg", "source": "mon_white"}]}
 {"description": "反り亀甲", "images": [{"path": "data/mon-white-224/14529.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/4243.jpg", "source": "mon_white"}]}
 {"description": "扇に松雲", "images": [{"path": "data/mon-white-224/05430.jpg", "source": "mon_white"}]}
@@ -3000,6 +3001,7 @@
 {"description": "丸に右重ね直違", "images": [{"path": "data/mon-white-224/22501.jpg", "source": "mon_white"}]}
 {"description": "四割菊に葉付き菊", "images": [{"path": "data/mon-white-224/13904.jpg", "source": "mon_white"}]}
 {"description": "夕顔の葉丸", "images": [{"path": "data/mon-white-224/4308.jpg", "source": "mon_white"}]}
+{"description": "変わり花牡丹", "images": [{"path": "data/mon-white-224/0608.jpg", "source": "mon_white"}]}
 {"description": "丸に陰片喰", "images": [{"path": "data/mon-white-224/1516.jpg", "source": "mon_white"}]}
 {"description": " 隅切り角に三つ巴", "images": [{"path": "data/mon-white-224/08317.jpg", "source": "mon_white"}]}
 {"description": "柴田藤", "images": [{"path": "data/mon-white-224/3301.jpg", "source": "mon_white"}]}
@@ -3190,6 +3192,7 @@
 {"description": "永井鉄線", "images": [{"path": "data/mon-white-224/27902.jpg", "source": "mon_white"}, {"path": "data/wiki/Tessen.png", "source": "wiki"}]}
 {"description": "対い白鶴", "images": [{"path": "data/mon-white-224/2357.jpg", "source": "mon_white"}, {"path": "data/mon-white-224/27734.jpg", "source": "mon_white"}]}
 {"description": "菱に三つ割り葵", "images": [{"path": "data/mon-white-224/00403.jpg", "source": "mon_white"}]}
+{"description": "銀星", "images": [{"path": "data/mon-white-224/0540.jpg", "source": "mon_white"}]}
 {"description": "石持ち地抜き真向帆", "images": [{"path": "data/mon-white-224/0554.jpg", "source": "mon_white"}]}
 {"description": "井桁に木瓜", "images": [{"path": "data/mon-white-224/01709.jpg", "source": "mon_white"}]}
 {"description": "盃庵木瓜", "images": [{"path": "data/mon-white-224/4732.jpg", "source": "mon_white"}, {"path": "data/edo/img_338_crest_001.png", "source": "edo"}]}
@@ -3778,6 +3781,7 @@
 {"description": "丸桛", "images": [{"path": "data/mon-white-224/10402.jpg", "source": "mon_white"}]}
 {"description": "久留島唐団扇", "images": [{"path": "data/mon-white-224/2623.jpg", "source": "mon_white"}]}
 {"description": "二つ銀杏菱", "images": [{"path": "data/mon-white-224/0034.jpg", "source": "mon_white"}]}
+{"description": "菊法螺", "images": [{"path": "data/mon-white-224/90202.jpg", "source": "mon_white"}]}
 {"description": "銀杏揚羽蝶", "images": [{"path": "data/mon-white-224/0020.jpg", "source": "mon_white"}]}
 {"description": "二重輪に対い鱗", "images": [{"path": "data/mon-white-224/2637.jpg", "source": "mon_white"}]}
 {"description": "丸に出二つ引き", "images": [{"path": "data/mon-white-224/4520.jpg", "source": "mon_white"}]}
