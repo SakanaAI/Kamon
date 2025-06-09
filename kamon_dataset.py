@@ -26,7 +26,7 @@ def _load_data() -> Dict[str, Any]:
     for elt in reader:
       if elt["description"] in parsed:
         elt["parsed"] = parsed[elt["description"]]
-        elt["description"] = jaconv.kata2hira(elt["description"])
+        elt["description"] = jaconv.kata2hira(elt["description"]).strip()
         data.append(elt)
   return data
 
