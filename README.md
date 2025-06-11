@@ -57,3 +57,16 @@ sequence of vocabulary items corresponding to the phrase describing the crest.
 	 [1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.],
 	 [1., 1., 1.,  ..., 1., 1., 1.]]]), [49, 1366, 1252])
+
+# Synthetic examples.
+
+Synthetic examples can be generated from a simple grammar as follows:
+
+`python synthetic_examples.py --num=10`
+
+See the examples in synthetic, for example:
+
+![Synthetic Example
+ Mon](https://github.com/SakanaAI/Kamon/blob/main/synthetic/synth_0002.png)
+
+月輪に覗き尻合わせ三つ紅葉 ('Peeking butts-together three maple leaves in a moon ring')

@@ -1,4 +1,7 @@
+absl-py
 jaconv
 jsonlines
+numpy
+pillow
 torch
 torchvision
