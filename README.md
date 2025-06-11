@@ -64,7 +64,7 @@ Synthetic examples can be generated from a simple grammar as follows:
 
 `python synthetic_examples.py --num=10`
 
-See the examples in synthetic, for example:
+See the examples in `synthetic` subdirectory, for example:
 
 ![Synthetic Example
  Mon](https://github.com/SakanaAI/Kamon/blob/main/synthetic/synth_0002.png)
