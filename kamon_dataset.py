@@ -60,6 +60,7 @@ class KamonDataset(torch.utils.data.Dataset):
     dataset_mean: dataset mean for image normalization
     dataset_std: dataset STD for image normalization
     one_hot: whether to present the text tensor as one_hot or not
+    omit_edo: whether to omit the Edo data, which are rather different
   """
 
   def __init__(
@@ -70,6 +71,7 @@ class KamonDataset(torch.utils.data.Dataset):
       dataset_mean: list=[0.5, 0.5, 0.5],
       dataset_std: list=[0.5, 0.5, 0.5],
       one_hot: bool=True,
+      omit_edo: bool=False,
   ):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
@@ -81,8 +83,10 @@ class KamonDataset(torch.utils.data.Dataset):
       description = elt["description"]
       labels = [self.expr_to_label[e] for e in elt["parsed"]]
       for img in elt["images"]:
-        path = img["path"]
         source = img["source"]
+        if omit_edo and source == "edo":
+          continue
+        path = img["path"]
         self.all_metadata.append(
           {
             "description": description,
