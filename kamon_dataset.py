@@ -32,6 +32,7 @@ def _load_data() -> Dict[str, Any]:
 
 
 ALLDATA = _load_data()
+END_TOKEN = "<EOS>"
 
 
 def _create_label_set() -> Tuple[Dict[str, int], Dict[int, str]]:
@@ -40,6 +41,7 @@ def _create_label_set() -> Tuple[Dict[str, int], Dict[int, str]]:
     for expr in elt["parsed"]:
       expressions.add(expr)
   expressions = sorted(list(expressions))
+  expressions.append(END_TOKEN)
   expr_to_label = {e: i for i, e in enumerate(expressions)}
   label_to_expr = {i: e for e, i in expr_to_label.items()}
   return expr_to_label, label_to_expr
@@ -79,9 +81,10 @@ class KamonDataset(torch.utils.data.Dataset):
     data = ALLDATA
     self.expr_to_label, self._label_to_expr = _create_label_set()
     self.max_v = len(self.expr_to_label)
+    self.end_token = self.expr_to_label[END_TOKEN]
     for elt in data:
       description = elt["description"]
-      labels = [self.expr_to_label[e] for e in elt["parsed"]]
+      labels = [self.expr_to_label[e] for e in elt["parsed"]] + [self.end_token]
       for img in elt["images"]:
         source = img["source"]
         if omit_edo and source == "edo":
