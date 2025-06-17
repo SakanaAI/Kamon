@@ -84,6 +84,7 @@ class KamonDataset(torch.utils.data.Dataset):
     self.expr_to_label, self._label_to_expr = _create_label_set()
     self.max_v = len(self.expr_to_label)
     self.end_token = self.expr_to_label[END_TOKEN]
+    self.vocab_size = self.end_token + 1
     self.max_len = -1
     for elt in data:
       description = elt["description"]
