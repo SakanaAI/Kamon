@@ -60,7 +60,6 @@ class KamonDataset(torch.utils.data.Dataset):
   Args:
     image_size: Size of image, defaulting to 224x224
     division: one of "train", "val", "test"
-    base: base path to this directory
     dataset_mean: dataset mean for image normalization
     dataset_std: dataset STD for image normalization
     one_hot: whether to present the text tensor as one_hot or not
@@ -72,7 +71,6 @@ class KamonDataset(torch.utils.data.Dataset):
       self,
       image_size: int=224,
       division: str="train",
-      base: str="",
       dataset_mean: list=[0.5, 0.5, 0.5],
       dataset_std: list=[0.5, 0.5, 0.5],
       one_hot: bool=False,
@@ -104,7 +102,7 @@ class KamonDataset(torch.utils.data.Dataset):
             "path": path,
             "source": source,
             "image": _retrieve_image(
-              os.path.join(base, path),
+              os.path.join(path),
               self.image_size,
             ).convert("RGB"),
           }
