@@ -13,15 +13,17 @@ from PIL import Image
 from torchvision import transforms
 from typing import Any, Dict, Tuple
 
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
 
 def _load_data() -> Dict[str, Any]:
   parsed = {}
-  with jsonlines.open("data/index_parsed_claude_all.jsonl") as reader:
+  with jsonlines.open(f"{ROOT}/data/index_parsed_claude_all.jsonl") as reader:
     for elt in reader:
       parsed[elt["description"]] = [
         jaconv.kata2hira(e["expr"]) for e in elt["analysis"]
       ]
-  with jsonlines.open("data/descriptions.jsonl") as reader:
+  with jsonlines.open(f"{ROOT}/data/descriptions.jsonl") as reader:
     data = []
     for elt in reader:
       if elt["description"] in parsed:
@@ -49,7 +51,7 @@ def _create_label_set() -> Tuple[Dict[str, int], Dict[int, str]]:
 
 def _retrieve_image(path: str, size: int) -> Image:
   size = (size, size)
-  return Image.open(path).resize(size)
+  return Image.open(os.path.join(ROOT, path)).resize(size)
 
 
 class KamonDataset(torch.utils.data.Dataset):
