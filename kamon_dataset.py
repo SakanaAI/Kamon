@@ -63,6 +63,7 @@ class KamonDataset(torch.utils.data.Dataset):
     dataset_std: dataset STD for image normalization
     one_hot: whether to present the text tensor as one_hot or not
     omit_edo: whether to omit the Edo data, which are rather different
+    pad: if True, pad to max length of all data.
   """
 
   def __init__(
@@ -72,8 +73,9 @@ class KamonDataset(torch.utils.data.Dataset):
       base: str="",
       dataset_mean: list=[0.5, 0.5, 0.5],
       dataset_std: list=[0.5, 0.5, 0.5],
-      one_hot: bool=True,
+      one_hot: bool=False,
       omit_edo: bool=False,
+      pad: bool=True,
   ):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
@@ -82,9 +84,12 @@ class KamonDataset(torch.utils.data.Dataset):
     self.expr_to_label, self._label_to_expr = _create_label_set()
     self.max_v = len(self.expr_to_label)
     self.end_token = self.expr_to_label[END_TOKEN]
+    self.max_len = -1
     for elt in data:
       description = elt["description"]
       labels = [self.expr_to_label[e] for e in elt["parsed"]] + [self.end_token]
+      if len(labels) > self.max_len:
+        self.max_len = len(labels)
       for img in elt["images"]:
         source = img["source"]
         if omit_edo and source == "edo":
@@ -128,6 +133,8 @@ class KamonDataset(torch.utils.data.Dataset):
       ]
     )
     self.one_hot = one_hot
+    self.pad = pad
+    self.padded = [self.end_token] * self.max_len
 
   def __len__(self):
     return len(self.metadata)
@@ -136,9 +143,11 @@ class KamonDataset(torch.utils.data.Dataset):
     item = self.metadata[idx]
     image = item["image"]
     labels = item["labels"]
+    if self.pad:
+      labels = (labels + self.padded)[:self.max_len]
     if self.one_hot:
       labels = torch.nn.functional.one_hot(torch.tensor(labels), self.max_v)
     return (
       self.transform(image),
-      labels,
+      torch.tensor(labels),
     )
