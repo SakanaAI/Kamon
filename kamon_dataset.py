@@ -1,14 +1,21 @@
 """Load the data and present it as a Dataset.
 """
 
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
 import collections
 import csv
 import jaconv
 import jsonlines
-import os
 import random
+import noising
+import sys
+import time
 import torch
 
+from copy import deepcopy
 from PIL import Image
 from torchvision import transforms
 from typing import Any, Dict, Tuple
@@ -76,6 +83,7 @@ class KamonDataset(torch.utils.data.Dataset):
       one_hot: bool=False,
       omit_edo: bool=False,
       pad: bool=True,
+      num_augmentations: int=5,
   ):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
@@ -115,6 +123,15 @@ class KamonDataset(torch.utils.data.Dataset):
     val_top = int(0.9 * length)
     if division == "train":
       self.metadata = self.all_metadata[:train_top]
+      random.seed(time.time())
+      new_train = []
+      for elt in self.metadata:
+        for _ in range(num_augmentations):
+          new_elt = deepcopy(elt)
+          new_elt["image"] = noising.apply_adjustments(new_elt["image"])
+          new_train.append(new_elt)
+      self.metadata += new_train
+      random.shuffle(self.metadata)
     elif division == "val":
       self.metadata = self.all_metadata[train_top:val_top]
     else:
