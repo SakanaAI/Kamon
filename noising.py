@@ -9,12 +9,12 @@ from PIL import Image, ImageEnhance
 #
 # The extra code to make sure that once it's rotated, we have an all-white
 # background.
-def rotate(img: Image, pad: int=2) -> Image:
+def rotate(img: Image, pad: int=2, window: int=10) -> Image:
 
   size = img.size
 
   def random_angle():
-    return random.randint(-10, 10)
+    return random.randint(-window, window)
 
   def image_to_array(img: Image) -> np.array:
     return np.array(img.getdata()).reshape((img.height, img.width, -1))
@@ -36,9 +36,14 @@ def rotate(img: Image, pad: int=2) -> Image:
   return new_img.resize(size)
 
 
-def salt_and_pepper(img: Image):
+def randrange(bot: float, top: float) -> float:
+  assert top > bot
+  return random.random() * (top - bot) + bot
+
+
+def salt_and_pepper(img: Image, bot: float=0.002, top: float=0.006) -> Image:
   output = np.copy(np.array(img))
-  amount = random.random() / 250 + 0.002  # centered around 0.004
+  amount = randrange(bot, top)
   # add salt
   nb_salt = int(np.ceil(amount * output.size * 0.5))
   coords = [
@@ -61,11 +66,11 @@ def salt_and_pepper(img: Image):
   return img
 
 
-def gaussian(img: Image):
+def gaussian(img: Image, bot: float=0.1, top: float=0.3) -> Image:
   output = np.copy(np.array(img, dtype=np.float64))
   row, col, depth = output.shape
   mean = 0
-  var = random.random() / 5 + 0.1  # Centered around 0.2
+  var = randrange(bot, top)
   sigma = var ** 0.5
   gauss = np.random.normal(mean, sigma, (row, col, depth))
   gauss = gauss.reshape(row, col, depth)
@@ -94,9 +99,19 @@ ADJUSTMENTS = [
 ]
 
 
-def apply_adjustments(img: Image):
+def _apply_adjustments(img: Image) -> Image:
   new_img = img
   for adjustment in ADJUSTMENTS:
     if random.random() < 0.5:
       new_img = adjustment(new_img)
+  return new_img
+
+
+# Apply set of adjustments to the image from above up to niter times, with prob
+# of 0.5 each time:
+def apply_adjustments(img: Image, niter=3) -> Image:
+  new_img = _apply_adjustments(img)
+  for _ in range(niter - 1):
+    if random.random() < 0.5:
+      new_img = _apply_adjustments(img)
   return new_img
