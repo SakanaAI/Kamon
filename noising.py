@@ -113,5 +113,5 @@ def apply_adjustments(img: Image, niter=3) -> Image:
   new_img = _apply_adjustments(img)
   for _ in range(niter - 1):
     if random.random() < 0.5:
-      new_img = _apply_adjustments(img)
+      new_img = _apply_adjustments(new_img)
   return new_img
