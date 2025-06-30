@@ -27,15 +27,28 @@ def _load_data() -> Dict[str, Any]:
   parsed = {}
   with jsonlines.open(f"{ROOT}/data/index_parsed_claude_all.jsonl") as reader:
     for elt in reader:
-      parsed[elt["description"]] = [
+      description = elt["description"].strip()
+      parsed[description] = [
         jaconv.kata2hira(e["expr"]) for e in elt["analysis"]
       ]
+  translations = {}
+  with jsonlines.open(
+      f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
+  ) as reader:
+    for elt in reader:
+      description = elt["description"].strip()
+      translations[description] = elt["translation"]
   with jsonlines.open(f"{ROOT}/data/descriptions.jsonl") as reader:
     data = []
     for elt in reader:
-      if elt["description"] in parsed:
-        elt["parsed"] = parsed[elt["description"]]
-        elt["description"] = jaconv.kata2hira(elt["description"]).strip()
+      description = elt["description"].strip()
+      if description in parsed:
+        elt["parsed"] = parsed[description]
+        elt["description"] = jaconv.kata2hira(description).strip()
+        if description in translations:
+          elt["translation"] = translations[description]
+        else:
+          elt["translation"] = "NA"
         data.append(elt)
   return data
 
@@ -110,6 +123,7 @@ class KamonDataset(torch.utils.data.Dataset):
             "labels": labels,
             "path": path,
             "source": source,
+            "translation": elt["translation"],
             "image": _retrieve_image(
               os.path.join(path),
               self.image_size,
