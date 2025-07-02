@@ -102,7 +102,7 @@ class KamonDataset(torch.utils.data.Dataset):
     self.image_size = image_size
     self.all_metadata = []
     data = ALLDATA
-    self.expr_to_label, self._label_to_expr = _create_label_set()
+    self.expr_to_label, self.label_to_expr = _create_label_set()
     self.max_v = len(self.expr_to_label)
     self.end_token = self.expr_to_label[END_TOKEN]
     self.vocab_size = self.end_token + 1
@@ -183,3 +183,16 @@ class KamonDataset(torch.utils.data.Dataset):
       self.transform(image),
       torch.tensor(labels),
     )
+
+
+  def dump_text(self, path: str):
+    """Dumps partition in a text format, one string per line.
+    """
+    seen = set()
+    corpus = []
+    for elt in self.metadata:
+      text = " ".join([self.label_to_expr[t] for t in elt["labels"]])
+      seen.add(text)
+    with open(path, "w") as s:
+      for text in seen:
+        s.write(f"{text}\n")
