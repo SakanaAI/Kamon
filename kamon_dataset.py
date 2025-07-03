@@ -71,7 +71,14 @@ def _create_label_set() -> Tuple[Dict[str, int], Dict[int, str]]:
 
 def _retrieve_image(path: str, size: int) -> Image:
   size = (size, size)
-  return Image.open(os.path.join(ROOT, path)).resize(size)
+  img = Image.open(os.path.join(ROOT, path)).resize(size)
+  if img.mode in ["RGBA", "LA"]:
+    img.load()
+    canvas = Image.new("RGB", img.size, (255, 255, 255))
+    idx = 3 if img.mode == "RGBA" else 1
+    canvas.paste(img, mask=img.split()[idx])
+    img = canvas
+  return img
 
 
 class KamonDataset(torch.utils.data.Dataset):
