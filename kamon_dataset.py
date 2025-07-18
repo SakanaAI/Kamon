@@ -185,7 +185,7 @@ class KamonDataset(torch.utils.data.Dataset):
     if self.pad:
       labels = torch.tensor((labels + self.padded)[:self.max_len])
     if self.one_hot:
-      labels = torch.nn.functional.one_hot(torch.tensor(labels), self.max_v)
+      labels = torch.nn.functional.one_hot(labels, self.max_v)
     return (
       self.transform(image),
       labels,
