@@ -16,17 +16,18 @@ if torch.cuda.is_available():
 from tqdm.auto import tqdm
 
 from Work.Kamon.git.Kamon import kamon_dataset as kd
+from Work.Kamon.ngram import lm
 
 from models.ctm import ContinuousThoughtMachine
 from models.lstm import LSTMBaseline
 from models.ff import FFBaseline
-from tasks.mazes.plotting import make_maze_gif
+from tasks.kamon.plotting import make_kamon_gif
 from tasks.image_classification.plotting import plot_neural_dynamics
 from utils.housekeeping import set_seed, zip_python_code
 from utils.losses import maze_loss
 from utils.schedulers import WarmupCosineAnnealingLR, WarmupMultiStepLR, warmup
 
-make_kamon_gif = make_maze_gif
+
 kamon_loss = maze_loss
 
 import torchvision
@@ -128,14 +129,24 @@ def parse_args():
     parser.add_argument('--strict_reload', action=argparse.BooleanOptionalAction, default=True, help='Should use strict reload for model weights.') # Added back
     parser.add_argument('--ignore_metrics_when_reloading', action=argparse.BooleanOptionalAction, default=False, help='Ignore metrics when reloading (for debugging)?') # Added back
 
+    # Kamon-specific flags
+
+    parser.add_argument('--nimage_dumps', type=int, default=10, help='Number of images to dump each time.')
+    parser.add_argument('--image_size', type=int, default=224, help='Image size.')
+
     # Tracking
     parser.add_argument('--track_every', type=int, default=1000, help='Track metrics every this many iterations.')
     parser.add_argument('--n_test_batches', type=int, default=20, help='How many minibatches to approx metrics. Set to -1 for full eval') # Default changed
 
-    # Device
-    parser.add_argument('--device', type=int, nargs='+', default=[-1], help='List of GPU(s) to use. Set to -1 to use CPU.')
     parser.add_argument('--use_amp', action=argparse.BooleanOptionalAction, default=False, help='AMP autocast.')
 
+    # Device
+    parser.add_argument('--device', type=int, nargs='+', default=[-1], help='List of GPU(s) to use. Set to -1 to use CPU.')
+
+    # Experimental ngram rescoring
+    parser.add_argument('--ngram_lm', type=str, default='', help='Path to ngram LM')
+    parser.add_argument('--ngram_lm_scaling', type=float, default=0.5,
+                        help='Scaling factor for ngram LM rescoring')
 
     args = parser.parse_args()
     return args
@@ -143,19 +154,33 @@ def parse_args():
 
 if __name__=='__main__':
 
+    print_one = True
     # Housekeeping
     args = parse_args()
 
     set_seed(args.seed, False)
     if not os.path.exists(args.log_dir): os.makedirs(args.log_dir)
+    if not os.path.exists(f"{args.log_dir}/gifs"): os.makedirs(f"{args.log_dir}/gifs")
+    if not os.path.exists(f"{args.log_dir}/predictions/"): os.makedirs(f"{args.log_dir}/predictions/")
 
     ## Move these to here since vocab size and length depend on them
-    train_data = kd.KamonDataset(division="train", omit_edo=True, pad=True, one_hot=False)
-    test_data = kd.KamonDataset(division="test", omit_edo=True, pad=True, one_hot=False)
+    train_data = kd.KamonDataset(division="train", omit_edo=True, pad=True,
+                                 one_hot=False, image_size=args.image_size, num_augmentations=9)
+    test_data = kd.KamonDataset(division="test", omit_edo=True, pad=True,
+                                one_hot=False, image_size=args.image_size, num_augmentations=0)
 
+    # Experimental ngram rescoring
+    ngram_model = None
+    if args.ngram_lm:
+        ngram_model = lm.load_lm(args.ngram_lm)
+
+    vocab = [k for k in train_data.expr_to_label.keys()]
     vocab_size = train_data.vocab_size
     kamon_route_len = train_data.max_len
     end_token = train_data.end_token
+    loss_weight = torch.ones((vocab_size,))
+    loss_weight[end_token] = 0.01
+    print("Set loss_weight tensor.")
 
     prediction_reshaper = [kamon_route_len, vocab_size]  # Problem specific
     args.out_dims = kamon_route_len * vocab_size # Output dimension before reshaping
@@ -173,6 +198,7 @@ if __name__=='__main__':
     else:
         device = 'cpu'
     print(f'Running model {args.model} on {device}')
+    loss_weight = loss_weight.to(device)
 
 
     # Build model conditionally
@@ -386,7 +412,9 @@ if __name__=='__main__':
                     predictions_raw, certainties, synchronisation = model(inputs)
                     # Reshape predictions: (B, SeqLength, vocab_size, Ticks)
                     predictions = predictions_raw.reshape(predictions_raw.size(0), -1, vocab_size, predictions_raw.size(-1))
-                    loss, where_most_certain, upto_where = kamon_loss(predictions, certainties, targets, cirriculum_lookahead=args.cirriculum_lookahead, use_most_certain=True)
+                    loss, where_most_certain, upto_where = kamon_loss(predictions, certainties, targets,
+                                                                      cirriculum_lookahead=args.cirriculum_lookahead,
+                                                                      use_most_certain=True, weight=loss_weight)
                     # Accuracy uses predictions[B, S, C, T] indexed at where_most_certain[B] -> gives (B, S, C) -> argmax(2) -> (B,S)
                     accuracy_finegrained = (predictions.argmax(2)[torch.arange(predictions.size(0), device=predictions.device), :, where_most_certain] == targets).float().mean().item()
 
@@ -586,7 +614,16 @@ if __name__=='__main__':
                     test_losses.append(np.mean(all_losses))
                     # Calculate per step/tick accuracy
                     if args.model in ['ctm', 'lstm']:
+                         # print(f"ALL PREDICTIONS SHAPE = {all_predictions.shape}")  # (660, 11, 75)
+                         # print(f"ALL TARGETS SHAPE = {all_targets.shape}")  # (660, 11)
                          test_accuracies.append(np.mean(all_predictions == all_targets[:,:,np.newaxis], axis=0)) # -> (S, T)
+                         # Write out targets and predictions as text for last tick.
+                         predictions_text_file = f"{args.log_dir}/predictions/preds_{bi:07d}.txt"
+                         with open(predictions_text_file, "w") as ostream:
+                             for i in range(all_targets.shape[0]):
+                                 tgts = " ".join([train_data.label_to_expr[int(k)] for k in all_targets[i]])
+                                 preds = " ".join([train_data.label_to_expr[int(k)] for k in all_predictions[i, :, -1]])
+                                 ostream.write(f"{tgts}\t{preds}\n")
                     else: # FF
                          test_accuracies.append(np.mean(all_predictions == all_targets, axis=0)) # -> (S,)
 
@@ -655,27 +692,54 @@ if __name__=='__main__':
                             # Find longest path in batch for potentially better visualization
                             longest_index = (targets_viz!=end_token).sum(-1).argmax() # Action 4 assumed padding/end
 
-                            # Track internal states
-                            predictions_viz_raw, certainties_viz, _, pre_activations_viz, post_activations_viz, attention_tracking_viz = model(inputs_viz, track=True)
-
-                            # Reshape predictions (assuming raw is B, D, T)
-                            predictions_viz = predictions_viz_raw.reshape(predictions_viz_raw.size(0), -1, vocab_size, predictions_viz_raw.size(-1)) # B, S, C, T
-
+                            # New stuff
+                            predictions_viz_raw, certainties_viz, _, pre_activations_viz, post_activations_viz, attention_tracking_viz = model(inputs, track=True)
                             att_shape = (model.kv_features.shape[2], model.kv_features.shape[3])
                             attention_tracking_viz = attention_tracking_viz.reshape(
                                 attention_tracking_viz.shape[0],
                                 attention_tracking_viz.shape[1], -1, att_shape[0], att_shape[1])
+                            predictions_viz = predictions_viz_raw.reshape(predictions_viz_raw.size(0), -1, vocab_size, predictions_viz_raw.size(-1)) # B, S, C, T
+
+                            # Experimental ngram LM rescoring, rescore final tick
+                            if ngram_model:
+                                predictions_viz = predictions_viz.cpu().numpy()
+                                tick = args.iterations - 1
+                                if print_one:
+                                    print("PREDICTIONS LAST TICK BEFORE:")
+                                    tmp = predictions_viz[0, 0, :, tick].tolist()
+                                    print(f"MIN:\t{min(tmp)}")
+                                    print(f"MAX:\t{max(tmp)}")
+                                predictions_viz = lm.rescore_batch_at_tick(
+                                    batch=predictions_viz,
+                                    lm=ngram_model,
+                                    dataset=test_data,
+                                    tick=tick,
+                                    scaling=args.ngram_lm_scaling,
+                                )
+                                if print_one:
+                                    print("PREDICTIONS LAST TICK AFTER:")
+                                    tmp = predictions_viz[0, 0, :, tick].tolist()
+                                    print(f"MIN:\t{min(tmp)}")
+                                    print(f"MAX:\t{max(tmp)}")
+                                print_one = False
+                                predictions_viz = torch.tensor(predictions_viz).to(device)
 
                             # Plot dynamics (common plotting function)
                             plot_neural_dynamics(post_activations_viz, 100, args.log_dir, axis_snap=True)
 
-                            # TODO(rws): Come up with some way to plot this.
-                            # Create kamon GIF (task-specific plotting)
-                            # make_kamon_gif((inputs_viz[longest_index].detach().cpu().numpy()+1)/2,
-                            #                predictions_viz[longest_index].detach().cpu().numpy(), # Pass reshaped B,S,C,T -> S,C,T
-                            #                targets_viz[longest_index].detach().cpu().numpy(), # S
-                            #                attention_tracking_viz[:, longest_index],  # Pass T, (H), H, W
-                            #                args.log_dir)
+                            for index in range(args.nimage_dumps):
+                                input_image = (inputs[index].detach().cpu().numpy()+1)/2  # make sure that this is in a range of [0, 1]. i.e., reverse any standardisation approach
+                                make_kamon_gif(
+                                    input_image,
+                                    targets[index].detach().cpu().numpy(),
+                                    predictions_viz[index].detach().cpu().numpy(),
+                                    certainties_viz[index].detach().cpu().numpy(),
+                                    attention_tracking_viz[:, index],
+                                    vocab,
+                                    f"{args.log_dir}/gifs",
+                                    bi,
+                                    index,
+                                )
                         #  except Exception as e:
                         #       print(f"Visualization failed for model {args.model}: {e}")
                     # --- End Visualization ---
