@@ -31,45 +31,11 @@ flags.DEFINE_float('learning_rate', 1e-4, 'Learning rate')
 flags.DEFINE_integer('checkpoint_steps', 10000, 'Steps between checkpoints')
 flags.DEFINE_string('checkpoint_dir', 'checkpoints', 'Directory to save checkpoints')
 flags.DEFINE_string('output_dir', 'outputs', 'Directory to save outputs')
-flags.DEFINE_integer('max_checkpoints_to_keep', 5, 'Maximum number of checkpoints to keep')
 flags.DEFINE_boolean('also_train_vgg', False, 'Whether to train VGG parameters')
 flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
 
-
-def manage_checkpoints(checkpoint_dir, max_to_keep):
-    """Remove old checkpoints, keeping only the most recent max_to_keep."""
-    if max_to_keep <= 0:
-        return
-
-    # Find all checkpoint files
-    checkpoint_pattern = os.path.join(checkpoint_dir, "checkpoint_step_*.pt")
-    checkpoint_files = glob.glob(checkpoint_pattern)
-
-    if len(checkpoint_files) <= max_to_keep:
-        return
-
-    # Sort by step number (extract from filename)
-    def get_step_number(filepath):
-        basename = os.path.basename(filepath)
-        # Extract step number from "checkpoint_step_12345.pt"
-        step_str = basename.replace("checkpoint_step_", "").replace(".pt", "")
-        try:
-            return int(step_str)
-        except ValueError:
-            return 0
-
-    checkpoint_files.sort(key=get_step_number)
-
-    # Remove oldest checkpoints
-    files_to_remove = checkpoint_files[:-max_to_keep]
-    for file_path in files_to_remove:
-        try:
-            os.remove(file_path)
-            print(f"Removed old checkpoint: {os.path.basename(file_path)}")
-        except OSError as e:
-            print(f"Warning: Could not remove checkpoint {file_path}: {e}")
 
 
 def save_mask_images(masks, output_dir, prefix, vocab, label_to_expr):
@@ -100,8 +66,8 @@ def save_mask_images(masks, output_dir, prefix, vocab, label_to_expr):
             img.save(img_path)
 
 
-def evaluate_model(model, test_loader, device, vocab_size, label_to_expr, end_token, output_dir, step):
-    """Evaluate model on test set and save results."""
+def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_token, output_dir, step):
+    """Evaluate model on validation set and save results."""
     model.eval()
     total_loss = 0
     total_samples = 0
@@ -111,7 +77,7 @@ def evaluate_model(model, test_loader, device, vocab_size, label_to_expr, end_to
     criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
     with torch.no_grad():
-        for batch_idx, (images, target_tokens) in enumerate(test_loader):
+        for batch_idx, (images, target_tokens) in enumerate(val_loader):
             images = images.to(device)
             target_tokens = target_tokens.to(device)
 
@@ -170,7 +136,7 @@ def evaluate_model(model, test_loader, device, vocab_size, label_to_expr, end_to
                 save_mask_images(
                     pred_masks.cpu(),
                     os.path.join(output_dir, f'step_{step}'),
-                    f'test_{batch_idx:03d}',
+                    f'val_{batch_idx:03d}',
                     vocab_size,
                     label_to_expr
                 )
@@ -213,8 +179,8 @@ def main(argv):
         omit_edo=True,
     )
 
-    test_data = kd.KamonDataset(
-        division="test",
+    val_data = kd.KamonDataset(
+        division="val",
         image_size=FLAGS.image_size,
         num_augmentations=1,
         one_hot=False,
@@ -231,7 +197,7 @@ def main(argv):
     print(f"Max sequence length: {max_seq_len}")
     print(f"End token ID: {end_token}")
     print(f"Training samples: {len(train_data)}")
-    print(f"Test samples: {len(test_data)}")
+    print(f"Validation samples: {len(val_data)}")
 
     # Create data loaders
     train_loader = DataLoader(
@@ -242,8 +208,8 @@ def main(argv):
         pin_memory=True
     )
 
-    test_loader = DataLoader(
-        test_data,
+    val_loader = DataLoader(
+        val_data,
         batch_size=FLAGS.batch_size,
         shuffle=False,
         num_workers=4,
@@ -268,6 +234,8 @@ def main(argv):
     # Training loop
     print("Starting training...")
     global_step = 0
+    best_val_loss = float('inf')
+    best_checkpoint_path = None
 
     for epoch in range(FLAGS.num_epochs):
         model.train()
@@ -301,34 +269,47 @@ def main(argv):
             if batch_idx % 100 == 0:
                 print(f"Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item():.4f}")
 
-            # Checkpoint and evaluation
+            # Evaluation and best model saving
             if global_step % FLAGS.checkpoint_steps == 0:
-                print(f"\nCheckpointing at step {global_step}...")
+                print(f"\nEvaluating at step {global_step}...")
 
-                # Save checkpoint
-                checkpoint_path = os.path.join(FLAGS.checkpoint_dir, f"checkpoint_step_{global_step}.pt")
-                torch.save({
-                    'step': global_step,
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': loss.item(),
-                    'vocab_size': vocab_size,
-                    'max_seq_len': max_seq_len,
-                    'end_token': end_token,
-                    'label_to_expr': label_to_expr,
-                }, checkpoint_path)
-
-                # Manage checkpoint rotation
-                manage_checkpoints(FLAGS.checkpoint_dir, FLAGS.max_checkpoints_to_keep)
-
-                # Evaluate on test set
-                print("Evaluating on test set...")
-                test_loss = evaluate_model(
-                    model, test_loader, device, vocab_size,
+                # Evaluate on validation set
+                val_loss = evaluate_model(
+                    model, val_loader, device, vocab_size,
                     label_to_expr, end_token, FLAGS.output_dir, global_step
                 )
-                print(f"Test loss: {test_loss:.4f}")
+                print(f"Validation loss: {val_loss:.4f}")
+
+                # Save best model only
+                if val_loss < best_val_loss:
+                    print(f"New best validation loss: {val_loss:.4f} (previous: {best_val_loss:.4f})")
+                    best_val_loss = val_loss
+
+                    # Remove previous best checkpoint if it exists
+                    if best_checkpoint_path and os.path.exists(best_checkpoint_path):
+                        try:
+                            os.remove(best_checkpoint_path)
+                            print(f"Removed previous best checkpoint: {os.path.basename(best_checkpoint_path)}")
+                        except OSError as e:
+                            print(f"Warning: Could not remove previous best checkpoint: {e}")
+
+                    # Save new best checkpoint
+                    best_checkpoint_path = os.path.join(FLAGS.checkpoint_dir, f"checkpoint_best_{global_step}.pt")
+                    torch.save({
+                        'step': global_step,
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'train_loss': loss.item(),
+                        'val_loss': val_loss,
+                        'vocab_size': vocab_size,
+                        'max_seq_len': max_seq_len,
+                        'end_token': end_token,
+                        'label_to_expr': label_to_expr,
+                    }, best_checkpoint_path)
+                    print(f"Saved best checkpoint: {os.path.basename(best_checkpoint_path)}")
+                else:
+                    print(f"Validation loss {val_loss:.4f} not better than best {best_val_loss:.4f}, not saving checkpoint")
 
                 model.train()  # Return to training mode
 
@@ -339,11 +320,12 @@ def main(argv):
 
     # Final evaluation
     print("Running final evaluation...")
-    test_loss = evaluate_model(
-        model, test_loader, device, vocab_size,
+    final_val_loss = evaluate_model(
+        model, val_loader, device, vocab_size,
         label_to_expr, end_token, FLAGS.output_dir, 'final'
     )
-    print(f"Final test loss: {test_loss:.4f}")
+    print(f"Final validation loss: {final_val_loss:.4f}")
+    print(f"Best validation loss during training: {best_val_loss:.4f}")
 
     # Save final model
     final_checkpoint_path = os.path.join(FLAGS.checkpoint_dir, "final_model.pt")
