@@ -13,6 +13,12 @@ from absl import flags
 
 RESULTS = flags.DEFINE_string("results", None, "Path to results JSONL")
 OUTPUT = flags.DEFINE_string("output", None, "Path to output JSONL")
+DIV = flags.DEFINE_enum(
+  "div",
+  "test",
+  ["test", "val"],
+  "Which division to use as test.",
+)
 
 
 def fix(desc):
@@ -31,7 +37,7 @@ def main(unused_argv):
   for elt in train.metadata:
     train_images[fix(elt["description"])].append(elt["path"])
   test = kd.KamonDataset(
-    division="test",
+    division=DIV.value,
     image_size=224,
     num_augmentations=0,
     one_hot=False,
@@ -39,19 +45,25 @@ def main(unused_argv):
   )
   results = [e for e in jsonlines.open(RESULTS.value)]
   merged = []
+  good = 0
   for i, elt in enumerate(results):
     test_elt = test.metadata[i]
+    reference = fix(elt["reference_description"])
+    predicted = fix(elt["predicted_description"])
     merged_elt = {
-      "reference": fix(elt["reference_description"]),
-      "predicted": fix(elt["predicted_description"]),
+      "reference": reference,
+      "predicted": predicted,
       "image": test_elt["path"],
       "train_images_reference": train_images[fix(elt["reference_description"])],
       "train_images_predicted": train_images[fix(elt["predicted_description"])],
       "translation": test_elt["translation"],
     }
+    if reference == predicted:
+      good += 1
     merged.append(merged_elt)
   with jsonlines.open(OUTPUT.value, "w") as writer:
     writer.write_all(merged)
+  print(f"{good} / {len(results)}")
 
 
 if __name__ == "__main__":

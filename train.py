@@ -13,6 +13,7 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 import glob
+import jaconv
 from absl import app, flags
 
 # Add current directory to path
@@ -35,6 +36,63 @@ flags.DEFINE_boolean('also_train_vgg', False, 'Whether to train VGG parameters')
 flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
+
+
+def preprocess_text_for_comparison(text):
+    """Preprocess text for character edit distance comparison.
+
+    Args:
+        text: Input text string
+
+    Returns:
+        Preprocessed text with whitespace removed and converted to hiragana
+    """
+    # Remove all whitespace
+    text = text.replace(' ', '').replace('\t', '').replace('\n', '')
+    # Convert katakana to hiragana for consistent comparison
+    text = jaconv.kata2hira(text)
+    return text
+
+
+def calculate_character_edit_distance(reference, predicted):
+    """Calculate character-level edit distance between reference and predicted text.
+
+    Args:
+        reference: Ground truth text
+        predicted: Predicted text
+
+    Returns:
+        Total edit operations (insertions + deletions + substitutions)
+    """
+    # Preprocess both texts
+    ref_processed = preprocess_text_for_comparison(reference)
+    pred_processed = preprocess_text_for_comparison(predicted)
+
+    ref_chars = list(ref_processed)
+    pred_chars = list(pred_processed)
+
+    # Dynamic programming table for edit distance
+    dp = [[0] * (len(pred_chars) + 1) for _ in range(len(ref_chars) + 1)]
+
+    # Initialize first row and column
+    for i in range(len(ref_chars) + 1):
+        dp[i][0] = i  # deletions
+    for j in range(len(pred_chars) + 1):
+        dp[0][j] = j  # insertions
+
+    # Fill the DP table
+    for i in range(1, len(ref_chars) + 1):
+        for j in range(1, len(pred_chars) + 1):
+            if ref_chars[i-1] == pred_chars[j-1]:
+                dp[i][j] = dp[i-1][j-1]  # no operation
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i-1][j],    # deletion
+                    dp[i][j-1],    # insertion
+                    dp[i-1][j-1]   # substitution
+                )
+
+    return dp[len(ref_chars)][len(pred_chars)]
 
 
 
@@ -70,6 +128,7 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
     """Evaluate model on validation set and save results."""
     model.eval()
     total_loss = 0
+    total_edit_distance = 0
     total_samples = 0
     all_predictions = []
     all_masks = []
@@ -120,6 +179,10 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
 
                 reference_description = ' '.join([label_to_expr.get(token, f'<UNK:{token}>') for token in gt_tokens_list])
 
+                # Calculate character edit distance for this example
+                edit_distance = calculate_character_edit_distance(reference_description, predicted_description)
+                total_edit_distance += edit_distance
+
                 all_predictions.append({
                     'batch_idx': batch_idx,
                     'example_idx': i,
@@ -151,7 +214,7 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
         for pred in all_predictions:
             writer.write(pred)
 
-    return avg_loss
+    return avg_loss, total_edit_distance
 
 
 def main(argv):
@@ -234,7 +297,7 @@ def main(argv):
     # Training loop
     print("Starting training...")
     global_step = 0
-    best_val_loss = float('inf')
+    best_edit_distance = float('inf')
     best_checkpoint_path = None
 
     for epoch in range(FLAGS.num_epochs):
@@ -274,16 +337,17 @@ def main(argv):
                 print(f"\nEvaluating at step {global_step}...")
 
                 # Evaluate on validation set
-                val_loss = evaluate_model(
+                val_loss, total_edit_distance = evaluate_model(
                     model, val_loader, device, vocab_size,
                     label_to_expr, end_token, FLAGS.output_dir, global_step
                 )
                 print(f"Validation loss: {val_loss:.4f}")
+                print(f"Total character edit distance: {total_edit_distance}")
 
-                # Save best model only
-                if val_loss < best_val_loss:
-                    print(f"New best validation loss: {val_loss:.4f} (previous: {best_val_loss:.4f})")
-                    best_val_loss = val_loss
+                # Save best model based on character edit distance (lower is better)
+                if total_edit_distance < best_edit_distance:
+                    print(f"New best edit distance: {total_edit_distance} (previous: {best_edit_distance})")
+                    best_edit_distance = total_edit_distance
 
                     # Remove previous best checkpoint if it exists
                     if best_checkpoint_path and os.path.exists(best_checkpoint_path):
@@ -302,6 +366,7 @@ def main(argv):
                         'optimizer_state_dict': optimizer.state_dict(),
                         'train_loss': loss.item(),
                         'val_loss': val_loss,
+                        'edit_distance': total_edit_distance,
                         'vocab_size': vocab_size,
                         'max_seq_len': max_seq_len,
                         'end_token': end_token,
@@ -309,7 +374,7 @@ def main(argv):
                     }, best_checkpoint_path)
                     print(f"Saved best checkpoint: {os.path.basename(best_checkpoint_path)}")
                 else:
-                    print(f"Validation loss {val_loss:.4f} not better than best {best_val_loss:.4f}, not saving checkpoint")
+                    print(f"Edit distance {total_edit_distance} not better than best {best_edit_distance}, not saving checkpoint")
 
                 model.train()  # Return to training mode
 
@@ -320,12 +385,13 @@ def main(argv):
 
     # Final evaluation
     print("Running final evaluation...")
-    final_val_loss = evaluate_model(
+    final_val_loss, final_edit_distance = evaluate_model(
         model, val_loader, device, vocab_size,
         label_to_expr, end_token, FLAGS.output_dir, 'final'
     )
     print(f"Final validation loss: {final_val_loss:.4f}")
-    print(f"Best validation loss during training: {best_val_loss:.4f}")
+    print(f"Final character edit distance: {final_edit_distance}")
+    print(f"Best character edit distance during training: {best_edit_distance}")
 
     # Save final model
     final_checkpoint_path = os.path.join(FLAGS.checkpoint_dir, "final_model.pt")
