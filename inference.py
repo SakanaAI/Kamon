@@ -44,9 +44,24 @@ def load_checkpoint(checkpoint_path, device):
     # Try to get model config, with fallbacks for older checkpoints
     model_config = checkpoint.get('config', {})
     image_size = model_config.get('image_size', 224)
-    ngram_length = model_config.get('ngram_length', 2)
     hidden_dim = model_config.get('hidden_dim', 512)
     also_train_vgg = model_config.get('also_train_vgg', False)
+
+    # Infer ngram_length from the feature_combiner input dimension if not in config
+    if 'ngram_length' in model_config:
+        ngram_length = model_config['ngram_length']
+    else:
+        # Infer from feature_combiner.0.weight shape
+        # Input dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+        # Assuming vgg_feature_dim = 4096
+        vgg_feature_dim = 4096
+        feature_combiner_input_dim = checkpoint['model_state_dict']['feature_combiner.0.weight'].shape[1]
+
+        # Solve: feature_combiner_input_dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+        # Rearrange: (feature_combiner_input_dim - vgg_feature_dim) = (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+        # ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) / (vgg_feature_dim + vocab_size)
+        ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) // (vgg_feature_dim + vocab_size)
+        print(f"Inferred ngram_length = {ngram_length} from checkpoint dimensions")
 
     # Create model
     model = VGGImageToTextModel(
