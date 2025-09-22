@@ -191,7 +191,7 @@ def main(argv):
         dataset = kd.KamonDataset(
             division=FLAGS.dataset_subset,
             image_size=checkpoint_metadata['image_size'],
-            num_augmentations=1,  # No augmentation for inference
+            num_augmentations=0,  # No augmentation for inference
             one_hot=False,
             omit_edo=FLAGS.omit_edo,
         )
