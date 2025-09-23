@@ -48,14 +48,18 @@ def main(unused_argv):
   good = 0
   for i, elt in enumerate(results):
     test_elt = test.metadata[i]
-    reference = fix(elt["reference_description"])
-    predicted = fix(elt["predicted_description"])
+    try:
+      reference = fix(elt["reference_description"])
+      predicted = fix(elt["predicted_description"])
+    except KeyError:
+      reference = fix(elt["reference"])
+      predicted = fix(elt["predicted"])
     merged_elt = {
       "reference": reference,
       "predicted": predicted,
       "image": test_elt["path"],
-      "train_images_reference": train_images[fix(elt["reference_description"])],
-      "train_images_predicted": train_images[fix(elt["predicted_description"])],
+      "train_images_reference": train_images[reference],
+      "train_images_predicted": train_images[predicted],
       "translation": test_elt["translation"],
     }
     if reference == predicted:
