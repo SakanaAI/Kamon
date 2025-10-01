@@ -5,7 +5,7 @@
 
 立ち浪に真向き兎 ('frontwards facing rabbit in a standing wave')
 
-Kamon (Mon --- Japanese Family Crest) data from three sources:
+This repository contains Kamon (Mon --- Japanese Family Crest) data from three sources:
 
 1. Edo period Ansei Bukan (安政武鑑, Armory of the Ansei Reign Years) from the [Center for Open Data in the Humanities](https://codh.rois.ac.jp/).
 
