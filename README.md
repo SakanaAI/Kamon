@@ -7,12 +7,12 @@
 
 Kamon (Mon --- Japanese Family Crest) data from three sources:
 
-1. Edo period Ansei Bukan (Armory of the Ansei Reign Years) from the [Center for Open Data in the Humanities](https://codh.rois.ac.jp/)
+1. Edo period Ansei Bukan (Armory of the Ansei Reign Years) from the [Center for Open Data in the Humanities](https://codh.rois.ac.jp/).
 
 2. Various open-source images from Wikimedia
 (see [here](https://github.com/SakanaAI/Kamon/blob/main/data/wiki/wiki_licenses.csv) for licensing details).
 
-3. Images from https://github.com/Rebolforces/kamondataset
+3. Images from https://github.com/Rebolforces/kamondataset.
 
 All of these are "blazoned" with descriptions following the standard methods for
 describing Mon. With the exception of the Wikimedia data, which already came
