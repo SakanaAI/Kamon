@@ -83,3 +83,6 @@ provided.  The architecture is given schematically below:
 A training script can be found in `train.sh` and an inference script in `test.sh`.
 
 A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
+
+Decoding output on the test set from one training run can be seen
+[here](https://htmlpreview.github.io/?https://github.com/SakanaAI/Kamon/blob/main/test_decode.html).
