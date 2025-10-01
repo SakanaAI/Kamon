@@ -71,3 +71,15 @@ See the examples in the `synthetic` subdirectory, for example:
  Mon](https://github.com/SakanaAI/Kamon/blob/main/synthetic/synth_0002.png)
 
 月輪に覗き尻合わせ三つ紅葉 ('Peeking butts-together three maple leaves in a moon ring')
+
+# Training and inference with baseline VGG-based model
+
+A baseline model using
+[VGG](https://huggingface.co/learn/computer-vision-course/en/unit2/cnns/vgg) is
+provided.  The architecture is given schematically below:
+
+![VGG model architecture](https://github.com/SakanaAI/Kamon/blob/main/vgg.jpg)
+
+A training script can be found in `train.sh` and an inference script in `test.sh`.
+
+A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
