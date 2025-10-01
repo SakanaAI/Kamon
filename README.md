@@ -87,8 +87,8 @@ like. Motifs may be modified and arranged in various ways, and while these
 modifications and arrangements are quite restricted, they also often require
 some amount of reasoning. For example a motif such as a plant leaf may be
 arranged three in a circle, with either the heads pointed to the center (頭合わ
-せ) or the bottoms pointed to the center (尻合わせ). But `head' here means the
-top of the motif as it would normally be displayed, and `bottom' the
+せ) or the bottoms pointed to the center (尻合わせ). But `head` here means the
+top of the motif as it would normally be displayed, and `bottom` the
 reverse. This requires knowing for each motif what the typical display
 arrangement is, which is not obvious from the geometry of the motif. This,
 coupled with the fact that the dataset for Kamon is small, makes crest-to-text
