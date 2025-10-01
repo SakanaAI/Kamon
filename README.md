@@ -5,7 +5,7 @@
 
 立ち浪に真向き兎 ('frontwards facing rabbit in a standing wave')
 
-This repository contains Kamon (Mon --- Japanese Family Crest) data from three sources:
+This repository contains kamon (Japanese family crest) data from three sources:
 
 1. Edo period Ansei Bukan (安政武鑑, Armory of the Ansei Reign Years) from the [Center for Open Data in the Humanities](https://codh.rois.ac.jp/).
 
@@ -61,7 +61,11 @@ sequence of vocabulary items corresponding to the phrase describing the crest.
 
 # Synthetic examples
 
-Synthetic examples can be generated from a simple grammar as follows:
+Kamon are theoretically open-ended since one can create new designs by combining
+existing motifs (or even creating new motifs) in new ways. Some of the ways of
+constructing new crests can be described by simple grammatical rules. Here we
+provide a simple grammar-based generator to create synthetic examples (some more
+plausible than others):
 
 `python synthetic_examples.py --num=10`
 
@@ -73,6 +77,22 @@ See the examples in the `synthetic` subdirectory, for example:
 月輪に覗き尻合わせ三つ紅葉 ('Peeking butts-together three maple leaves in a moon ring')
 
 # Training and inference with baseline VGG-based model
+
+One challenge is to generate the description of a crest given an image of that
+crest. Vision models are not particularly well tuned for this sort of data, and
+there are some important differences between scene-to-text and this problem.
+The motifs in kamon are usually highly stylized, so that to recognize, say, a
+wave requires knowing what a typical kamon stylization of a wave looks
+like. Motifs may be modified and arranged in various ways, and while these
+modifications and arrangements are quite restricted, they also often require
+some amount of reasoning. For example a motif such as a plant leaf may be
+arranged three in a circle, with either the heads pointed to the center (頭合わ
+せ) or the bottoms pointed to the center (尻合わせ). But `head' here means the
+top of the motif as it would normally be displayed, and `bottom' the
+reverse. This requires knowing for each motif what the typical display
+arrangement is, which is not obvious from the geometry of the motif. This,
+coupled with the fact that the dataset for Kamon is small, makes crest-to-text
+conversion challenging.
 
 A baseline model using
 [VGG](https://huggingface.co/learn/computer-vision-course/en/unit2/cnns/vgg) is
