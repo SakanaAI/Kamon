@@ -59,6 +59,12 @@ sequence of vocabulary items corresponding to the phrase describing the crest.
          [1., 1., 1.,  ..., 1., 1., 1.],
          [1., 1., 1.,  ..., 1., 1., 1.]]]), [49, 1366, 1252])
 
+
+The dependency parsing of the crest descriptions, along with their translation
+into English in `index_parsed_claude_all.jsonl` and
+`index_parsed_claude_all_translated_claude.jsonl`, respectively, were performed
+using Claude 3.5 Sonnet.
+
 # Synthetic examples
 
 Kamon are theoretically open-ended since one can create new designs by combining
