@@ -52,8 +52,9 @@ class VGGImageToTextModel(nn.Module):
 
         # Trainable masks for each position - sigmoid to keep values in [0,1]
         # Shape: (max_seq_len, 1, image_size, image_size)
+        # Initialize with small random values to break symmetry and encourage learning
         self.position_masks = nn.Parameter(
-            torch.zeros(max_seq_len, 1, image_size, image_size)
+            torch.randn(max_seq_len, 1, image_size, image_size) * 0.1
         )
 
         # Linear layers for combining features
@@ -214,6 +215,33 @@ class VGGImageToTextModel(nn.Module):
         all_masks = torch.stack(all_masks, dim=1)    # [B, max_seq_len, H, W]
 
         return all_logits, all_masks
+
+    def get_mask_diversity_loss(self, weight=0.01):
+        """Calculate a regularization loss to encourage mask diversity between positions.
+
+        Args:
+            weight: Weight for the diversity loss term
+
+        Returns:
+            Diversity loss encouraging different masks at different positions
+        """
+        # Get masks after sigmoid
+        masks = torch.sigmoid(self.position_masks)  # [seq_len, 1, H, W]
+
+        # Flatten spatial dimensions for easier computation
+        masks_flat = masks.view(self.max_seq_len, -1)  # [seq_len, H*W]
+
+        # Compute pairwise similarities between different positions
+        similarities = torch.mm(masks_flat, masks_flat.t())  # [seq_len, seq_len]
+
+        # Remove diagonal (self-similarities) and take mean of off-diagonal elements
+        mask_diag = torch.eye(self.max_seq_len, device=masks.device, dtype=masks.dtype)
+        off_diagonal = similarities * (1 - mask_diag)
+
+        # Higher similarity = higher loss (we want different masks)
+        diversity_loss = off_diagonal.sum() / (self.max_seq_len * (self.max_seq_len - 1))
+
+        return weight * diversity_loss
 
     def generate(
         self,

@@ -317,7 +317,12 @@ def main(argv):
             logits_flat = logits.view(-1, vocab_size_out)
             targets_flat = target_tokens.view(-1)
 
-            loss = criterion(logits_flat, targets_flat)
+            ce_loss = criterion(logits_flat, targets_flat)
+
+            # Add mask diversity loss to encourage position-specific masks
+            diversity_loss = model.get_mask_diversity_loss(weight=0.001)  # Small weight
+
+            loss = ce_loss + diversity_loss
 
             # Backward pass
             optimizer.zero_grad()
@@ -330,7 +335,8 @@ def main(argv):
 
             # Print progress
             if batch_idx % 100 == 0:
-                print(f"Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item():.4f}")
+                print(f"Epoch {epoch}, Batch {batch_idx}, CE Loss: {ce_loss.item():.4f}, "
+                      f"Diversity Loss: {diversity_loss.item():.6f}, Total Loss: {loss.item():.4f}")
 
             # Evaluation and best model saving
             if global_step % FLAGS.checkpoint_steps == 0:
