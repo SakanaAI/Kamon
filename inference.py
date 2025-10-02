@@ -47,6 +47,7 @@ def load_checkpoint(checkpoint_path, device):
     image_size = model_config.get('image_size', 224)
     hidden_dim = model_config.get('hidden_dim', 512)
     also_train_vgg = model_config.get('also_train_vgg', False)
+    use_masks = model_config.get('use_masks', True)  # Default to True for backward compatibility
 
     # Infer ngram_length from the feature_combiner input dimension if not in config
     if 'ngram_length' in model_config:
@@ -72,6 +73,7 @@ def load_checkpoint(checkpoint_path, device):
         ngram_length=ngram_length,
         hidden_dim=hidden_dim,
         also_train_vgg=also_train_vgg,
+        use_masks=use_masks,
     )
 
     # Load model weights

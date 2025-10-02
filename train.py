@@ -33,6 +33,7 @@ flags.DEFINE_integer('checkpoint_steps', 10000, 'Steps between checkpoints')
 flags.DEFINE_string('checkpoint_dir', 'checkpoints', 'Directory to save checkpoints')
 flags.DEFINE_string('output_dir', 'outputs', 'Directory to save outputs')
 flags.DEFINE_boolean('also_train_vgg', False, 'Whether to train VGG parameters')
+flags.DEFINE_boolean('use_masks', True, 'Whether to use position-specific trainable masks')
 flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
@@ -281,6 +282,7 @@ def main(argv):
 
     # Initialize model
     print("Initializing model...")
+    print(f"Using masks: {FLAGS.use_masks}")
     model = VGGImageToTextModel(
         vocab_size=vocab_size,
         max_seq_len=max_seq_len,
@@ -288,6 +290,7 @@ def main(argv):
         ngram_length=FLAGS.ngram_length,
         hidden_dim=FLAGS.hidden_dim,
         also_train_vgg=FLAGS.also_train_vgg,
+        use_masks=FLAGS.use_masks,
     ).to(device)
 
     # Initialize optimizer and loss function
@@ -412,6 +415,7 @@ def main(argv):
             'ngram_length': FLAGS.ngram_length,
             'hidden_dim': FLAGS.hidden_dim,
             'also_train_vgg': FLAGS.also_train_vgg,
+            'use_masks': FLAGS.use_masks,
         }
     }, final_checkpoint_path)
 

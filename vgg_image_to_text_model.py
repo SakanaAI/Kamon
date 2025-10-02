@@ -25,6 +25,7 @@ class VGGImageToTextModel(nn.Module):
         vgg_feature_dim: int = 4096,
         hidden_dim: int = 512,
         also_train_vgg: bool = False,
+        use_masks: bool = True,
     ):
         """Initialize the model.
 
@@ -36,6 +37,7 @@ class VGGImageToTextModel(nn.Module):
             vgg_feature_dim: Dimension of VGG features (4096 for VGG16 classifier)
             hidden_dim: Hidden dimension for combining features
             also_train_vgg: Whether to train VGG parameters or freeze them
+            use_masks: Whether to use position-specific trainable masks
         """
         super().__init__()
 
@@ -46,6 +48,7 @@ class VGGImageToTextModel(nn.Module):
         self.vgg_feature_dim = vgg_feature_dim
         self.hidden_dim = hidden_dim
         self.also_train_vgg = also_train_vgg
+        self.use_masks = use_masks
 
         # Initialize VGG16 feature extractor
         self.construct_vgg_classifier()
@@ -53,9 +56,16 @@ class VGGImageToTextModel(nn.Module):
         # Trainable masks for each position - sigmoid to keep values in [0,1]
         # Shape: (max_seq_len, 1, image_size, image_size)
         # Initialize with small random values to break symmetry and encourage learning
-        self.position_masks = nn.Parameter(
-            torch.randn(max_seq_len, 1, image_size, image_size) * 0.1
-        )
+        if self.use_masks:
+            self.position_masks = nn.Parameter(
+                torch.randn(max_seq_len, 1, image_size, image_size) * 0.1
+            )
+        else:
+            # Create non-trainable dummy masks (all ones) when masks are disabled
+            self.register_buffer(
+                'position_masks',
+                torch.ones(max_seq_len, 1, image_size, image_size)
+            )
 
         # Linear layers for combining features
         # Input: current VGG features + (ngram_length - 1) * (previous VGG features + previous logits)
@@ -223,8 +233,12 @@ class VGGImageToTextModel(nn.Module):
             weight: Weight for the diversity loss term
 
         Returns:
-            Diversity loss encouraging different masks at different positions
+            Diversity loss encouraging different masks at different positions (0 if masks disabled)
         """
+        # Return zero loss if masks are not being used
+        if not self.use_masks:
+            return torch.tensor(0.0, device=self.position_masks.device)
+
         # Get masks after sigmoid
         masks = torch.sigmoid(self.position_masks)  # [seq_len, 1, H, W]
 
