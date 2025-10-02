@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from absl import app, flags
 import numpy as np
+import jaconv
 
 # Add current directory to path
 sys.path.append(os.path.dirname(__file__))
@@ -93,15 +94,19 @@ def load_checkpoint(checkpoint_path, device):
 
 
 def normalize_description(desc):
-    """Normalize description by removing all whitespace for consistent comparison.
+    """Normalize description by removing whitespace and converting to hiragana.
 
     Args:
         desc: Description string
 
     Returns:
-        Normalized description with spaces removed
+        Normalized description with spaces removed and katakana converted to hiragana
     """
-    return desc.replace(' ', '').replace('\t', '').replace('\n', '')
+    # Remove all whitespace
+    desc = desc.replace(' ', '').replace('\t', '').replace('\n', '')
+    # Convert katakana to hiragana for consistent comparison
+    desc = jaconv.kata2hira(desc)
+    return desc
 
 
 def build_description_to_images_map(train_metadata):
