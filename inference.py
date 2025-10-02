@@ -92,6 +92,18 @@ def load_checkpoint(checkpoint_path, device):
     return model, metadata
 
 
+def normalize_description(desc):
+    """Normalize description by removing all whitespace for consistent comparison.
+
+    Args:
+        desc: Description string
+
+    Returns:
+        Normalized description with spaces removed
+    """
+    return desc.replace(' ', '').replace('\t', '').replace('\n', '')
+
+
 def build_description_to_images_map(train_metadata):
     """Build a mapping from descriptions to lists of image paths in training data.
 
@@ -99,16 +111,18 @@ def build_description_to_images_map(train_metadata):
         train_metadata: List of metadata dicts from training dataset
 
     Returns:
-        Dictionary mapping description strings to lists of image paths
+        Dictionary mapping normalized description strings to lists of image paths
     """
     desc_to_images = {}
     for item in train_metadata:
         desc = item.get('description', '')
         img_path = item.get('path', '')
         if desc and img_path:
-            if desc not in desc_to_images:
-                desc_to_images[desc] = []
-            desc_to_images[desc].append(img_path)
+            # Normalize description by removing spaces for consistent lookup
+            normalized_desc = normalize_description(desc)
+            if normalized_desc not in desc_to_images:
+                desc_to_images[normalized_desc] = []
+            desc_to_images[normalized_desc].append(img_path)
     return desc_to_images
 
 
@@ -164,10 +178,13 @@ def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_m
                     translation = ''
 
                 # Lookup training images with same description as reference
-                train_images_reference = train_desc_to_images.get(reference_description, [])
+                # Normalize descriptions by removing spaces before lookup
+                normalized_reference = normalize_description(reference_description)
+                train_images_reference = train_desc_to_images.get(normalized_reference, [])
 
                 # Lookup training images with same description as predicted
-                train_images_predicted = train_desc_to_images.get(predicted_description, [])
+                normalized_predicted = normalize_description(predicted_description)
+                train_images_predicted = train_desc_to_images.get(normalized_predicted, [])
 
                 result = {
                     'reference': reference_description,
