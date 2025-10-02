@@ -92,7 +92,27 @@ def load_checkpoint(checkpoint_path, device):
     return model, metadata
 
 
-def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_metadata):
+def build_description_to_images_map(train_metadata):
+    """Build a mapping from descriptions to lists of image paths in training data.
+
+    Args:
+        train_metadata: List of metadata dicts from training dataset
+
+    Returns:
+        Dictionary mapping description strings to lists of image paths
+    """
+    desc_to_images = {}
+    for item in train_metadata:
+        desc = item.get('description', '')
+        img_path = item.get('path', '')
+        if desc and img_path:
+            if desc not in desc_to_images:
+                desc_to_images[desc] = []
+            desc_to_images[desc].append(img_path)
+    return desc_to_images
+
+
+def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_metadata, train_desc_to_images):
     """Run inference on dataset and return results."""
     model.eval()
     results = []
@@ -139,15 +159,15 @@ def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_m
                     item_metadata = dataset_metadata[example_idx]
                     image_path = item_metadata.get('path', '')
                     translation = item_metadata.get('translation', '')
-                    # For train_images fields, we'd need to implement lookup logic
-                    # For now, using empty lists as placeholders
-                    train_images_reference = []
-                    train_images_predicted = []
                 else:
                     image_path = ''
                     translation = ''
-                    train_images_reference = []
-                    train_images_predicted = []
+
+                # Lookup training images with same description as reference
+                train_images_reference = train_desc_to_images.get(reference_description, [])
+
+                # Lookup training images with same description as predicted
+                train_images_predicted = train_desc_to_images.get(predicted_description, [])
 
                 result = {
                     'reference': reference_description,
@@ -201,7 +221,19 @@ def main(argv):
         if checkpoint_metadata['val_loss'] != 'unknown':
             print(f"Validation loss: {checkpoint_metadata['val_loss']}")
 
-        # Load dataset
+        # Load training dataset to build description-to-images mapping
+        print(f"Loading training dataset for description lookup...")
+        train_dataset = kd.KamonDataset(
+            division="train",
+            image_size=checkpoint_metadata['image_size'],
+            num_augmentations=0,  # No augmentation needed for lookup
+            one_hot=False,
+            omit_edo=FLAGS.omit_edo,
+        )
+        train_desc_to_images = build_description_to_images_map(train_dataset.metadata)
+        print(f"Built training description map with {len(train_desc_to_images)} unique descriptions")
+
+        # Load evaluation dataset
         print(f"Loading {FLAGS.dataset_subset} dataset (omit_edo={FLAGS.omit_edo})...")
         dataset = kd.KamonDataset(
             division=FLAGS.dataset_subset,
@@ -232,7 +264,8 @@ def main(argv):
             device,
             checkpoint_metadata['label_to_expr'],
             checkpoint_metadata['end_token'],
-            dataset_metadata
+            dataset_metadata,
+            train_desc_to_images
         )
 
         # Save results
