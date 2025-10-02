@@ -106,7 +106,17 @@ provided.  The architecture is given schematically below:
 
 ![VGG model architecture](https://github.com/SakanaAI/Kamon/blob/main/vgg.jpg)
 
-A training script can be found in `train.sh` and an inference script in `test.sh`.
+The input image is replicated _N_ times, where _N_ is the maximum token length
+of the output text. The image is optionally masked with a position-specific
+mask, then passed to a VGG model that is shared across positions. The final
+layer of the VGG model is removed so that the penultimate layer can be used for
+features. The VGG model by default is set to be trainable.  The VGG's features
+along with the `--ngram_length - 1`  previous VGG features, are combined with
+the `--ngram_length - 1` previous logits to compute the logits for the current
+position.
+
+A training script (with masking on) can be found in `train.sh` and an inference
+script in `test.sh`.
 
 A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
 
