@@ -112,8 +112,16 @@ mask, then passed to a VGG model that is shared across positions. The final
 layer of the VGG model is removed so that the penultimate layer can be used for
 features. The VGG model by default is set to be trainable.  The VGG's features
 along with the `--ngram_length - 1` previous VGG features and the
-`--ngram_length - 1` previous logits are input features for predicting the logits
-for the current position.
+`--ngram_length - 1` previous logits are input features for predicting the
+logits for the current position. The intuition behind the masking is that since
+the descriptions of the crests largely proceed from the outside inwards, the
+model should focus on different parts of the image at different times, and thus
+when considering the first output term it might learn to mask out bits of the
+image that are usually less relevant for predicting that term. For example, many
+crests are surrounded by some sort of ring or hexagon or other container, and
+this is described first. In order to describe that, the motifs inside the
+container are irrelevant. In practice it should be noted that the masking does
+not (yet) seem to make much difference.
 
 A training script (with masking on) can be found in `train.sh` and an inference
 script in `test.sh`.
