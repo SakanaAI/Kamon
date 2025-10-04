@@ -3,7 +3,7 @@ CKPTDIR=checkpoints
 OUTDIR=outputs
 mkdir -p "${CKPTDIR}" "${OUTDIR}"
 python3 train.py \
-        --num_epochs=100_000 \
+        --num_epochs=200 \
         --checkpoint_steps=5_000 \
         --checkpoint_dir="${CKPTDIR}" \
         --output_dir="${OUTDIR}" \
