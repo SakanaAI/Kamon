@@ -126,7 +126,7 @@ not (yet) seem to make much difference.
 A training script (with masking on) can be found in `train.sh` and an inference
 script in `test.sh`.
 
-A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
-
 Decoding output on the test set from one training run can be seen
-[here](https://htmlpreview.github.io/?https://github.com/SakanaAI/Kamon/blob/main/test_decode.html).
+[here](https://github.com/SakanaAI/Kamon/blob/main/test_decode.jsonl).
+
+A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
