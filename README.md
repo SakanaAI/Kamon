@@ -82,7 +82,7 @@ See the examples in the `synthetic` subdirectory, for example:
 ![Synthetic Example
  Mon](https://github.com/SakanaAI/Kamon/blob/main/synthetic/synth_0002.png)
 
-月輪に覗き尻合わせ三つ紅葉 ('Peeking butts-together three maple leaves in a moon ring')
+月輪に覗き尻合わせ三つ紅葉 ('Peeking bottoms-together three maple leaves in a moon ring')
 
 # Training and inference with baseline VGG-based model
 
