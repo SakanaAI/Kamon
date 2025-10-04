@@ -127,6 +127,7 @@ A training script (with masking on) can be found in `train.sh` and an inference
 script in `test.sh`.
 
 Decoding output on the test set from one training run can be seen
-[here](https://github.com/SakanaAI/Kamon/blob/main/test_decode.jsonl).
+[here](https://github.com/SakanaAI/Kamon/blob/main/test_decode.jsonl).  Note that this training and evaluation
+omits the Edo-period data.
 
 A script for generating an HTML page visualizing the inference output can be found in `visualize.py`.
