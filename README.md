@@ -1,7 +1,7 @@
 # Kamon (家紋)
 
 ![Example
- Mon](https://github.com/SakanaAI/Kamon/blob/main/data/mon-white-224/29605.jpg)
+ Mon](https://github.com/SakanaAI/Kamon/blob/main/rabbit.jpg)
 
 立ち浪に真向き兎 ('frontwards facing rabbit in a standing wave')
 
