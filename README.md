@@ -12,7 +12,10 @@ This repository contains kamon (Japanese family crest) data from three sources:
 2. Various open-source images from Wikimedia
 (see [here](https://github.com/SakanaAI/Kamon/blob/main/data/wiki/wiki_licenses.csv) for licensing details).
 
-3. Images from https://github.com/Rebolforces/kamondataset.
+3. Images from https://github.com/Rebolforces/kamondataset. Note that since we are uncertain about the copyright
+status of these data, we do not provide these images directly. Instead, please navigate to that site,
+download the [tarball](https://github.com/Rebolforces/kamondataset/commits/main/mon-white-224.tar.gz), and install all the
+images in the subdirectory `train` directly under `data/mon-white-224` here.
 
 All of these are "blazoned" with descriptions following the standard methods for
 describing kamon. With the exception of the Wikimedia data, which already came
