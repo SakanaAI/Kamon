@@ -22,23 +22,25 @@ from typing import Any, Dict, Tuple
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
+PARSED = f"{ROOT}/data/index_parsed_claude_all.jsonl"
+TRANSLATED = f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
+DESCRIPTIONS = f"{ROOT}/data/descriptions.jsonl"
+
 
 def _load_data() -> Dict[str, Any]:
   parsed = {}
-  with jsonlines.open(f"{ROOT}/data/index_parsed_claude_all.jsonl") as reader:
+  with jsonlines.open(PARSED) as reader:
     for elt in reader:
       description = elt["description"].strip()
       parsed[description] = [
         jaconv.kata2hira(e["expr"]) for e in elt["analysis"]
       ]
   translations = {}
-  with jsonlines.open(
-      f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
-  ) as reader:
+  with jsonlines.open(TRANSLATED) as reader:
     for elt in reader:
       description = elt["description"].strip()
       translations[description] = elt["translation"]
-  with jsonlines.open(f"{ROOT}/data/descriptions.jsonl") as reader:
+  with jsonlines.open(DESCRIPTIONS) as reader:
     data = []
     for elt in reader:
       description = elt["description"].strip()
