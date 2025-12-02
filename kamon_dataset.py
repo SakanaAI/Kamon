@@ -56,6 +56,19 @@ def _load_data() -> Dict[str, Any]:
 
 
 ALLDATA = _load_data()
+
+
+def reload_data(parsed: str, translated: str, descriptions: str):
+  global PARSED
+  global TRANSLATED
+  global DESCRIPTIONS
+  global ALLDATA
+  PARSED = parsed
+  TRANSLATED = translated
+  DESCRIPTIONS = descriptions
+  ALLDATA = _load_data()
+
+
 END_TOKEN = "<EOS>"
 
 
