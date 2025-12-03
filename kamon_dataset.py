@@ -15,6 +15,7 @@ import sys
 import time
 import torch
 
+from app import logging
 from copy import deepcopy
 from PIL import Image
 from torchvision import transforms
@@ -66,6 +67,10 @@ def reload_data(parsed: str, translated: str, descriptions: str):
   PARSED = parsed
   TRANSLATED = translated
   DESCRIPTIONS = descriptions
+  logging.info("Reloading data:")
+  logging.info(f"PARSED = {parsed}")
+  logging.info(f"TRANSLATED = {translated}")
+  logging.info(f"DESCRIPTIONS = {descriptions}")
   ALLDATA = _load_data()
 
 
