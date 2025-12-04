@@ -15,7 +15,7 @@ import sys
 import time
 import torch
 
-from app import logging
+from absl import logging
 from copy import deepcopy
 from PIL import Image
 from torchvision import transforms
