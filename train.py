@@ -37,6 +37,7 @@ flags.DEFINE_boolean('use_masks', True, 'Whether to use position-specific traina
 flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
+flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
 
 
 def preprocess_text_for_comparison(text):
@@ -235,6 +236,12 @@ def main(argv):
 
     # Load datasets
     print("Loading datasets...")
+    if FLAGS.synthetic:
+        print("Using synthetic data...")
+        parsed = "synthetic_examples/synthetic_parsed.jsonl"
+        translated = "synthetic_examples/synthetic_translated.jsonl"
+        descriptions = "synthetic_examples/synthetic.jsonl"
+        kd.reload_data(parsed, translated, descriptions)
     train_data = kd.KamonDataset(
         division="train",
         image_size=FLAGS.image_size,

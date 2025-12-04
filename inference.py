@@ -26,6 +26,7 @@ flags.DEFINE_boolean('omit_edo', True, 'Whether to omit Edo period images')
 flags.DEFINE_string('output_file', 'inference_results.jsonl', 'Output JSONL file')
 flags.DEFINE_integer('batch_size', 16, 'Batch size for inference')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
+flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
 
 
 def load_checkpoint(checkpoint_path, device):
@@ -246,6 +247,12 @@ def main(argv):
             print(f"Validation loss: {checkpoint_metadata['val_loss']}")
 
         # Load training dataset to build description-to-images mapping
+        if FLAGS.synthetic:
+            print("Using synthetic data...")
+            parsed = "synthetic_examples/synthetic_parsed.jsonl"
+            translated = "synthetic_examples/synthetic_translated.jsonl"
+            descriptions = "synthetic_examples/synthetic.jsonl"
+            kd.reload_data(parsed, translated, descriptions)
         print(f"Loading training dataset for description lookup...")
         train_dataset = kd.KamonDataset(
             division="train",
