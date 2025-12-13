@@ -23,9 +23,12 @@ from typing import Any, Dict, Tuple
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
-PARSED = f"{ROOT}/data/index_parsed_claude_all.jsonl"
-TRANSLATED = f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
-DESCRIPTIONS = f"{ROOT}/data/descriptions.jsonl"
+ORIG_PARSED = f"{ROOT}/data/index_parsed_claude_all.jsonl"
+ORIG_TRANSLATED = f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
+ORIG_DESCRIPTIONS = f"{ROOT}/data/descriptions.jsonl"
+PARSED = ORIG_PARSED
+TRANSLATED = ORIG_TRANSLATED
+DESCRIPTIONS = ORIG_DESCRIPTIONS
 
 
 def _load_data() -> Dict[str, Any]:
@@ -89,6 +92,23 @@ def _create_label_set() -> Tuple[Dict[str, int], Dict[int, str]]:
   return expr_to_label, label_to_expr
 
 
+def _extend_label_set(
+    expr_to_label: Tuple[Dict[str, int]]
+) -> Tuple[Dict[str, int], Dict[int, str]]:
+  label_to_expr = {i: e for e, i in expr_to_label.items()}
+  expressions = set()
+  for elt in ALLDATA:
+    for expr in elt["parsed"]:
+      if expr not in expr_to_label:
+        expressions.add(expr)
+  label = max(label_to_expr.keys()) + 1
+  for expr in expressions:
+    expr_to_label[expr] = label
+    label_to_expr[label] = expr
+    label += 1
+  return expr_to_label, label_to_expr
+
+
 def _retrieve_image(path: str, size: int) -> Image:
   size = (size, size)
   img = Image.open(os.path.join(ROOT, path)).resize(size)
@@ -112,6 +132,7 @@ class KamonDataset(torch.utils.data.Dataset):
     one_hot: whether to present the text tensor as one_hot or not
     omit_edo: whether to omit the Edo data, which are rather different
     pad: if True, pad to max length of all data.
+    expr_to_label: If provided, create label set by extending this one
   """
 
   def __init__(
@@ -124,12 +145,16 @@ class KamonDataset(torch.utils.data.Dataset):
       omit_edo: bool=False,
       pad: bool=True,
       num_augmentations: int=5,
+      expr_to_label: Tuple[Dict[str, int]]=None,
   ):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
     self.all_metadata = []
     data = ALLDATA
-    self.expr_to_label, self.label_to_expr = _create_label_set()
+    if expr_to_label:
+      self.expr_to_label, self.label_to_expr = _extend_label_set(expr_to_label)
+    else:
+      self.expr_to_label, self.label_to_expr = _create_label_set()
     self.max_v = len(self.expr_to_label)
     self.end_token = self.expr_to_label[END_TOKEN]
     self.vocab_size = self.end_token + 1

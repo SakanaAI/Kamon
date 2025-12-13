@@ -366,6 +366,11 @@ def generate_html_page(jsonl_file: str, output_file: str) -> None:
             font-style: italic;
         }}
 
+        .error-info.perfect {{
+            color: #0066cc;
+            font-weight: bold;
+        }}
+
         .navigation-section {{
             background: white;
             margin: 20px -20px 30px -20px;
@@ -520,6 +525,7 @@ def generate_html_page(jsonl_file: str, output_file: str) -> None:
         # Calculate individual error rates
         ins, dels, subs, cer = calculate_character_error_rate(reference, predicted)
         error_info = f"Individual CER: {cer:.3f} (I:{ins}, D:{dels}, S:{subs})"
+        error_class = "error-info perfect" if cer == 0.0 else "error-info"
 
         item_html = f"""
         <div class="item" id="example-{idx + 1}">
@@ -531,7 +537,7 @@ def generate_html_page(jsonl_file: str, output_file: str) -> None:
 
             {alignment_html}
 
-            <div class="error-info">{error_info}</div>
+            <div class="{error_class}">{error_info}</div>
 
             {training_images_html}
         </div>

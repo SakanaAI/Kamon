@@ -27,6 +27,11 @@ flags.DEFINE_string('output_file', 'inference_results.jsonl', 'Output JSONL file
 flags.DEFINE_integer('batch_size', 16, 'Batch size for inference')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
 flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
+flags.DEFINE_boolean(
+    'test_on_real',
+    False,
+    'Test on real data even if using training from synthetic data'
+)
 
 
 def load_checkpoint(checkpoint_path, device):
@@ -265,6 +270,15 @@ def main(argv):
         print(f"Built training description map with {len(train_desc_to_images)} unique descriptions")
 
         # Load evaluation dataset
+        expr_to_label = None
+        if FLAGS.test_on_real:
+            print("Testing on real data...")
+            expr_to_label = train_dataset.expr_to_label
+            parsed = kd.ORIG_PARSED
+            translated = kd.ORIG_TRANSLATED
+            descriptions = kd.ORIG_DESCRIPTIONS
+            kd.reload_data(parsed, translated, descriptions)
+
         print(f"Loading {FLAGS.dataset_subset} dataset (omit_edo={FLAGS.omit_edo})...")
         dataset = kd.KamonDataset(
             division=FLAGS.dataset_subset,
@@ -272,7 +286,10 @@ def main(argv):
             num_augmentations=0,  # No augmentation for inference
             one_hot=False,
             omit_edo=FLAGS.omit_edo,
+            expr_to_label=expr_to_label,
         )
+        if FLAGS.test_on_real:
+            checkpoint_metadata['label_to_expr'] = dataset.label_to_expr
 
         print(f"Dataset size: {len(dataset)} examples")
 
