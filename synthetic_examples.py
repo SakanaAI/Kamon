@@ -83,7 +83,7 @@ def generate(keep_intermediate: bool=False):
     add_intermediate(container[1], container[0])
     add_intermediate(img, f"に 豆 {other[0]}")
     add_intermediate(other[1], other[0])
-    img = io.inside(container[1], img, peek=False)
+    img = io.inside(container[1], img, scale=1.0, peek=False)
     expr = f"{container[0]}に豆{other[0]}"
   elif modifier == "三つ盛り":
     img = io.stack(other[1], mode=io.StackMode.BASIC)
