@@ -21,7 +21,7 @@ All of these are "blazoned" with descriptions following the standard methods for
 describing kamon. With the exception of the Wikimedia data, which already came
 with descriptions, all examples were blazoned by hand.
 
-Total dataset size is 7,410 images paired with descriptions.  The data includes
+Total dataset size is 7,408 images paired with descriptions.  The data includes
 (machine-generated) dependency parses and English translations for all
 descriptions.
 
