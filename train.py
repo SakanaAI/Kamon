@@ -38,6 +38,7 @@ flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
 flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
+flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
 
 
 def preprocess_text_for_comparison(text):
@@ -256,6 +257,7 @@ def main(argv):
         num_augmentations=1,
         one_hot=False,
         omit_edo=True,
+        omit_from_test_val=FLAGS.omit_from_test_val,
     )
 
     # Extract vocabulary information

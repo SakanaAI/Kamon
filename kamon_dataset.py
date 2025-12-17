@@ -131,6 +131,7 @@ class KamonDataset(torch.utils.data.Dataset):
     dataset_std: dataset STD for image normalization
     one_hot: whether to present the text tensor as one_hot or not
     omit_edo: whether to omit the Edo data, which are rather different
+    omit_from_test_val: data subsets to omit from test data
     pad: if True, pad to max length of all data.
     expr_to_label: If provided, create label set by extending this one
   """
@@ -143,6 +144,7 @@ class KamonDataset(torch.utils.data.Dataset):
       dataset_std: list=[0.5, 0.5, 0.5],
       one_hot: bool=False,
       omit_edo: bool=False,
+      omit_from_test_val: list[str]=[],
       pad: bool=True,
       num_augmentations: int=5,
       expr_to_label: Tuple[Dict[str, int]]=None,
@@ -199,10 +201,13 @@ class KamonDataset(torch.utils.data.Dataset):
       self.metadata += new_train
       random.shuffle(self.metadata)
     elif division == "val":
-      self.metadata = self.all_metadata[train_top:val_top]
+      metadata = self.all_metadata[train_top:val_top]
+      metadata = [e for e in metadata if e["source"] not in omit_from_test_val]
+      self.metadata = metadata
     else:
-      self.metadata = self.all_metadata[val_top:]
-
+      metadata = self.all_metadata[val_top:]
+      metadata = [e for e in metadata if e["source"] not in omit_from_test_val]
+      self.metadata = metadata
     ## Prepare image
     ##
     ## mean and std are just copied from what I had for the Stable Diffusion

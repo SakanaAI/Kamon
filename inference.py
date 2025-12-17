@@ -32,6 +32,7 @@ flags.DEFINE_boolean(
     False,
     'Test on real data even if using training from synthetic data'
 )
+flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
 
 
 def load_checkpoint(checkpoint_path, device):
@@ -287,6 +288,7 @@ def main(argv):
             one_hot=False,
             omit_edo=FLAGS.omit_edo,
             expr_to_label=expr_to_label,
+            omit_from_test_val=FLAGS.omit_from_test_val,
         )
         if FLAGS.test_on_real:
             checkpoint_metadata['label_to_expr'] = dataset.label_to_expr
