@@ -1,7 +1,8 @@
 #!/bin/bash
+# Sample inference script.
 CKPTDIR=checkpoints
-CKPT=${CKPTDIR}/checkpoint_best_*.pt
 OUTDIR=outputs
+CKPT=${CKPTDIR}/checkpoint_best_*.pt
 echo Checkpoint is ${CKPT}
 python3 inference.py \
         --checkpoint_path ${CKPT} \

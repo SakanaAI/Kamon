@@ -87,6 +87,10 @@ See the examples in the `synthetic` subdirectory, for example:
 
 月輪に覗き尻合わせ三つ紅葉 ('Peeking bottoms-together three maple leaves in a moon ring')
 
+The ![HuggingFace
+repository](https://huggingface.co/datasets/SakanaAI/Kamon/blob/main/synthetic_examples.zip)
+contains a set of 10,000 synthetic examples.
+
 # Training and inference with baseline VGG-based model
 
 One challenge is to generate the description of a crest given an image of that

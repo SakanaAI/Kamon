@@ -1,4 +1,5 @@
 #!/bin/bash
+# Sample training script.
 CKPTDIR=checkpoints
 OUTDIR=outputs
 mkdir -p "${CKPTDIR}" "${OUTDIR}"
