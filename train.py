@@ -38,6 +38,8 @@ flags.DEFINE_integer('ngram_length', 2, 'N-gram context length')
 flags.DEFINE_integer('hidden_dim', 512, 'Hidden dimension for feature combiner')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
 flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
+flags.DEFINE_boolean('combined', False, 'Use combined data')
+flags.DEFINE_boolean('omit_edo', True, 'Whether to omit Edo period images')
 flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
 
 
@@ -243,12 +245,19 @@ def main(argv):
         translated = "synthetic_examples/synthetic_translated.jsonl"
         descriptions = "synthetic_examples/synthetic.jsonl"
         kd.reload_data(parsed, translated, descriptions)
+    # Temporary hack until we can figure out a more elegant approach
+    elif FLAGS.combined:
+        print("Using combined data...")
+        parsed = "for_paper/combined_parsed.jsonl"
+        translated = "for_paper/combined_translated.jsonl"
+        descriptions = "for_paper/combined.jsonl"
+        kd.reload_data(parsed, translated, descriptions)
     train_data = kd.KamonDataset(
         division="train",
         image_size=FLAGS.image_size,
         num_augmentations=FLAGS.num_train_augmentations,
         one_hot=False,  # We need integer labels, not one-hot
-        omit_edo=True,
+        omit_edo=FLAGS.omit_edo,
     )
 
     val_data = kd.KamonDataset(
