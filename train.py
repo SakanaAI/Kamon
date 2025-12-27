@@ -265,7 +265,7 @@ def main(argv):
         image_size=FLAGS.image_size,
         num_augmentations=1,
         one_hot=False,
-        omit_edo=True,
+        omit_edo=FLAGS.omit_edo,
         omit_from_test_val=FLAGS.omit_from_test_val,
     )
 
