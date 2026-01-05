@@ -7,7 +7,24 @@ import html
 import os
 import base64
 import argparse
+import jaconv
 from typing import List, Tuple, Dict, Any
+
+
+def preprocess_text_for_comparison(text):
+    """Preprocess text for character edit distance comparison.
+
+    Args:
+        text: Input text string
+
+    Returns:
+        Preprocessed text with whitespace removed and converted to hiragana
+    """
+    # Remove all whitespace
+    text = text.replace(' ', '').replace('\t', '').replace('\n', '')
+    # Convert katakana to hiragana for consistent comparison
+    text = jaconv.kata2hira(text)
+    return text
 
 
 def calculate_character_error_rate(reference: str, predicted: str) -> Tuple[int, int, int, float]:
@@ -20,8 +37,8 @@ def calculate_character_error_rate(reference: str, predicted: str) -> Tuple[int,
     Returns:
         Tuple of (insertions, deletions, substitutions, error_rate)
     """
-    ref_chars = list(reference)
-    pred_chars = list(predicted)
+    ref_chars = list(preprocess_text_for_comparison(reference))
+    pred_chars = list(preprocess_text_for_comparison(predicted))
 
     # Dynamic programming table for edit distance
     dp = [[0] * (len(pred_chars) + 1) for _ in range(len(ref_chars) + 1)]
