@@ -170,17 +170,22 @@ def generate_html_page(jsonl_file: str, output_file: str) -> None:
 
     # Find cases where prediction = reference AND no training images
     perfect_predictions_no_training = []
+    cor = 0
     for idx, item in enumerate(data):
         reference = item.get('reference', '')
         predicted = item.get('predicted', '')
         train_images_reference = item.get('train_images_reference', [])
         train_images_predicted = item.get('train_images_predicted', [])
 
-        if (reference == predicted and
-            len(train_images_reference) == 0 and
-            len(train_images_predicted) == 0):
-            perfect_predictions_no_training.append((idx + 1, reference))
+        if (preprocess_text_for_comparison(reference) == preprocess_text_for_comparison(predicted)):
+            cor += 1
+            if (len(train_images_reference) == 0 and
+                len(train_images_predicted) == 0):
+                perfect_predictions_no_training.append((idx + 1, reference))
 
+    print(f"Overall string correct rate: {cor} ({cor / len(data)})")
+    nit_cor = len(perfect_predictions_no_training)
+    print(f"Overall string correct rate (NIT): {nit_cor} ({nit_cor / len(data)})")
     # Generate navigation links
     navigation_html = ""
     if perfect_predictions_no_training:
