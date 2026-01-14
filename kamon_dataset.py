@@ -161,7 +161,7 @@ class KamonDataset(torch.utils.data.Dataset):
     self.end_token = self.expr_to_label[END_TOKEN]
     self.vocab_size = self.end_token + 1
     self.max_len = -1
-    self.bigrams = set()
+    self.bigrams = collections.defaultdict(set)
     for elt in data:
       description = elt["description"]
       labels = [self.expr_to_label[e] for e in elt["parsed"]] + [self.end_token]
@@ -261,5 +261,5 @@ class KamonDataset(torch.utils.data.Dataset):
     for t in self.metadata:
       prev = -1
       for l in t["labels"]:
-        self.bigrams.add((prev, l))
+        self.bigrams[prev].add(l)
         prev = l
