@@ -161,6 +161,7 @@ class KamonDataset(torch.utils.data.Dataset):
     self.end_token = self.expr_to_label[END_TOKEN]
     self.vocab_size = self.end_token + 1
     self.max_len = -1
+    self.bigrams = set()
     for elt in data:
       description = elt["description"]
       labels = [self.expr_to_label[e] for e in elt["parsed"]] + [self.end_token]
@@ -191,6 +192,7 @@ class KamonDataset(torch.utils.data.Dataset):
     val_top = int(0.9 * length)
     if division == "train":
       self.metadata = self.all_metadata[:train_top]
+      self._create_bigram_table()
       random.seed(time.time())
       new_train = []
       for elt in self.metadata:
@@ -241,7 +243,6 @@ class KamonDataset(torch.utils.data.Dataset):
       labels,
     )
 
-
   def dump_text(self, path: str):
     """Dumps partition in a text format, one string per line.
     """
@@ -253,3 +254,12 @@ class KamonDataset(torch.utils.data.Dataset):
     with open(path, "w") as s:
       for text in seen:
         s.write(f"{text}\n")
+
+  # Create a bigram table. This is created for the train division only, and
+  # *before* any metadata augmentations.
+  def _create_bigram_table(self):
+    for t in self.metadata:
+      prev = -1
+      for l in t["labels"]:
+        self.bigrams.add((prev, l))
+        prev = l
