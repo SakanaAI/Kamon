@@ -263,3 +263,4 @@ class KamonDataset(torch.utils.data.Dataset):
       for l in t["labels"]:
         self.bigrams[prev].add(l)
         prev = l
+    self.bigrams[self.end_token].add(self.end_token)
