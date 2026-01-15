@@ -27,12 +27,21 @@ flags.DEFINE_string('output_file', 'inference_results.jsonl', 'Output JSONL file
 flags.DEFINE_integer('batch_size', 16, 'Batch size for inference')
 flags.DEFINE_string('device', 'auto', 'Device to use (cuda, cpu, or auto)')
 flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
+flags.DEFINE_boolean('combined', False, 'Use combined data')
 flags.DEFINE_boolean(
     'test_on_real',
     False,
     'Test on real data even if using training from synthetic data'
 )
 flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
+flags.DEFINE_string('parsed', None, 'Custom parsed data')
+flags.DEFINE_string('translated', None, 'Custom translated data')
+flags.DEFINE_string('descriptions', None, 'Custom descriptions')
+flags.DEFINE_bool(
+    'use_bigrams',
+    False,
+    'Constrain decoding with training bigrams',
+)
 
 
 def load_checkpoint(checkpoint_path, device):
@@ -140,7 +149,8 @@ def build_description_to_images_map(train_metadata):
     return desc_to_images
 
 
-def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_metadata, train_desc_to_images):
+def run_inference(model, dataloader, device, label_to_expr, end_token,
+                  dataset_metadata, train_desc_to_images, bigrams):
     """Run inference on dataset and return results."""
     model.eval()
     results = []
@@ -153,7 +163,7 @@ def run_inference(model, dataloader, device, label_to_expr, end_token, dataset_m
             target_tokens = target_tokens.to(device)
 
             # Generate predictions
-            pred_tokens, pred_masks = model.generate(images, end_token)
+            pred_tokens, pred_masks = model.generate(images, end_token, bigrams=bigrams)
 
             batch_size = images.size(0)
 
@@ -259,6 +269,12 @@ def main(argv):
             translated = "synthetic_examples/synthetic_translated.jsonl"
             descriptions = "synthetic_examples/synthetic.jsonl"
             kd.reload_data(parsed, translated, descriptions)
+        elif FLAGS.combined:
+            print("Using combined data...")
+            parsed = "for_paper/combined_parsed.jsonl"
+            translated = "for_paper/combined_translated.jsonl"
+            descriptions = "for_paper/combined.jsonl"
+            kd.reload_data(parsed, translated, descriptions)
         print(f"Loading training dataset for description lookup...")
         train_dataset = kd.KamonDataset(
             division="train",
@@ -267,6 +283,7 @@ def main(argv):
             one_hot=False,
             omit_edo=FLAGS.omit_edo,
         )
+        bigrams = train_dataset.bigrams if FLAGS.use_bigrams else None
         train_desc_to_images = build_description_to_images_map(train_dataset.metadata)
         print(f"Built training description map with {len(train_desc_to_images)} unique descriptions")
 
@@ -279,7 +296,16 @@ def main(argv):
             translated = kd.ORIG_TRANSLATED
             descriptions = kd.ORIG_DESCRIPTIONS
             kd.reload_data(parsed, translated, descriptions)
+        elif FLAGS.parsed and FLAGS.translated and FLAGS.descriptions:
+            print(f"Testing on custom data...{FLAGS.parsed}")
+            expr_to_label = train_dataset.expr_to_label
+            parsed = FLAGS.parsed
+            translated = FLAGS.translated
+            descriptions = FLAGS.descriptions
+            kd.reload_data(parsed, translated, descriptions)
 
+        if bigrams:
+            expr_to_label = train_dataset.expr_to_label
         print(f"Loading {FLAGS.dataset_subset} dataset (omit_edo={FLAGS.omit_edo})...")
         dataset = kd.KamonDataset(
             division=FLAGS.dataset_subset,
@@ -315,7 +341,8 @@ def main(argv):
             checkpoint_metadata['label_to_expr'],
             checkpoint_metadata['end_token'],
             dataset_metadata,
-            train_desc_to_images
+            train_desc_to_images,
+            bigrams,
         )
 
         # Save results

@@ -261,7 +261,8 @@ class VGGImageToTextModel(nn.Module):
         self,
         images: torch.Tensor,
         end_token: int,
-        max_length: Optional[int] = None
+        max_length: Optional[int] = None,
+        bigrams: Optional[dict] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate text descriptions for images.
 
@@ -269,6 +270,8 @@ class VGGImageToTextModel(nn.Module):
             images: Input images [B, 3, H, W]
             end_token: End token ID
             max_length: Maximum generation length (defaults to max_seq_len)
+            bigrams: Optional dictionary mapping label indices to sets of legal following labels.
+                     Key -1 represents the beginning-of-string token.
 
         Returns:
             Tuple of (generated_tokens, all_masks):
@@ -287,6 +290,9 @@ class VGGImageToTextModel(nn.Module):
         # Initialize history buffers for n-gram context
         feature_history = []
         logits_history = []
+
+        # Track previous tokens for bigram filtering (one per batch element)
+        prev_tokens = torch.full((batch_size,), -1, dtype=torch.long, device=device)
 
         for pos in range(max_length):
             # Get mask for current position
@@ -326,6 +332,21 @@ class VGGImageToTextModel(nn.Module):
 
             # Generate logits for current position
             logits = self.classifier(hidden_features)
+            untouched_logits = logits
+            # Apply bigram filtering if provided
+            if bigrams is not None:
+                # Keep a clean copy to pass to the next step
+                untouched_logits = logits.clone()
+                # For each example in the batch, mask out illegal tokens
+                for batch_idx in range(batch_size):
+                    prev_token = prev_tokens[batch_idx].item()
+                    # Get the set of legal following tokens
+                    if prev_token in bigrams:
+                        legal_tokens = bigrams[prev_token]
+                        # Create a mask for illegal tokens (all tokens not in legal_tokens)
+                        for token_idx in range(self.vocab_size):
+                            if token_idx not in legal_tokens:
+                                logits[batch_idx, token_idx] = float('-inf')
 
             # Sample tokens (greedy decoding)
             tokens = torch.argmax(logits, dim=1)
@@ -333,9 +354,12 @@ class VGGImageToTextModel(nn.Module):
             generated_tokens.append(tokens)
             all_masks.append(torch.sigmoid(current_mask).expand(batch_size, -1, -1))
 
+            # Update previous tokens for bigram filtering
+            prev_tokens = tokens.clone()
+
             # Update history buffers
             feature_history.append(vgg_features)
-            logits_history.append(logits)
+            logits_history.append(untouched_logits)
 
             # Keep only the last (ngram_length - 1) entries to maintain n-gram context
             if len(feature_history) > self.ngram_length - 1:
