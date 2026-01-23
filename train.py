@@ -41,6 +41,10 @@ flags.DEFINE_boolean('synthetic', False, 'Use synthetic data')
 flags.DEFINE_boolean('combined', False, 'Use combined data')
 flags.DEFINE_boolean('omit_edo', True, 'Whether to omit Edo period images')
 flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
+# Custom data
+flags.DEFINE_string('parsed', None, 'Custom parsed data')
+flags.DEFINE_string('translated', None, 'Custom translated data')
+flags.DEFINE_string('descriptions', None, 'Custom descriptions')
 
 
 def preprocess_text_for_comparison(text):
@@ -251,6 +255,12 @@ def main(argv):
         parsed = "for_paper/combined_parsed.jsonl"
         translated = "for_paper/combined_translated.jsonl"
         descriptions = "for_paper/combined.jsonl"
+        kd.reload_data(parsed, translated, descriptions)
+    elif FLAGS.parsed and FLAGS.translated and FLAGS.descriptions:
+        print("Using custom data...")
+        parsed = FLAGS.parsed
+        translated = FLAGS.translated
+        descriptions = FLAGS.descriptions
         kd.reload_data(parsed, translated, descriptions)
     train_data = kd.KamonDataset(
         division="train",
