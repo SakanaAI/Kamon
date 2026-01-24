@@ -34,6 +34,9 @@ flags.DEFINE_boolean(
     'Test on real data even if using training from synthetic data'
 )
 flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
+flags.DEFINE_string('training_parsed', None, 'Custom parsed data used for training')
+flags.DEFINE_string('training_translated', None, 'Custom translated data used for training')
+flags.DEFINE_string('training_descriptions', None, 'Custom descriptions used for training')
 flags.DEFINE_string('parsed', None, 'Custom parsed data')
 flags.DEFINE_string('translated', None, 'Custom translated data')
 flags.DEFINE_string('descriptions', None, 'Custom descriptions')
@@ -274,6 +277,12 @@ def main(argv):
             parsed = "for_paper/combined_parsed.jsonl"
             translated = "for_paper/combined_translated.jsonl"
             descriptions = "for_paper/combined.jsonl"
+            kd.reload_data(parsed, translated, descriptions)
+        elif FLAGS.training_parsed and FLAGS.training_translated and FLAGS.training_descriptions:
+            print(f"Loading the data used for training from ...{FLAGS.training_parsed}")
+            parsed = FLAGS.parsed
+            translated = FLAGS.translated
+            descriptions = FLAGS.descriptions
             kd.reload_data(parsed, translated, descriptions)
         print(f"Loading training dataset for description lookup...")
         train_dataset = kd.KamonDataset(
