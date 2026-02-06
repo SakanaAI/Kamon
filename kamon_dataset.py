@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(__file__))
 
 import collections
 import csv
+import hashlib
 import jaconv
 import jsonlines
 import random
@@ -23,12 +24,75 @@ from typing import Any, Dict, Tuple
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
+_CACHE_VERSION = 1
+
 ORIG_PARSED = f"{ROOT}/data/index_parsed_claude_all.jsonl"
 ORIG_TRANSLATED = f"{ROOT}/data/index_parsed_claude_all_translated_claude.jsonl"
 ORIG_DESCRIPTIONS = f"{ROOT}/data/descriptions.jsonl"
 PARSED = ORIG_PARSED
 TRANSLATED = ORIG_TRANSLATED
 DESCRIPTIONS = ORIG_DESCRIPTIONS
+
+
+def _dataset_cache_dir() -> str:
+  return os.path.join(ROOT, ".cache", "kamon_dataset")
+
+
+def _cache_enabled(cache: bool) -> bool:
+  if not cache:
+    return False
+  env = os.environ.get("KAMON_DATASET_CACHE", "1").strip().lower()
+  return env not in ("0", "false", "no", "off")
+
+
+def _file_fingerprint(path: str):
+  try:
+    st = os.stat(path)
+    return (os.path.abspath(path), st.st_mtime_ns, st.st_size)
+  except OSError:
+    return (os.path.abspath(path), None, None)
+
+
+def _hash_key(key) -> str:
+  return hashlib.sha256(repr(key).encode("utf-8")).hexdigest()[:16]
+
+
+def _pack_image(img: Image.Image) -> Dict[str, Any]:
+  return {
+    "mode": img.mode,
+    "size": img.size,
+    "data": img.tobytes(),
+  }
+
+
+def _unpack_image(packed: Dict[str, Any]) -> Image.Image:
+  return Image.frombytes(packed["mode"], tuple(packed["size"]), packed["data"])
+
+
+def _pack_metadata(metadata):
+  packed = []
+  for elt in metadata:
+    new_elt = dict(elt)
+    if "image" in new_elt:
+      new_elt["image"] = _pack_image(new_elt["image"])
+    packed.append(new_elt)
+  return packed
+
+
+def _unpack_metadata(metadata):
+  unpacked = []
+  for elt in metadata:
+    new_elt = dict(elt)
+    if "image" in new_elt:
+      new_elt["image"] = _unpack_image(new_elt["image"])
+    unpacked.append(new_elt)
+  return unpacked
+
+
+def _atomic_torch_save(obj: Any, path: str) -> None:
+  tmp_path = f"{path}.tmp.{os.getpid()}"
+  torch.save(obj, tmp_path)
+  os.replace(tmp_path, path)
 
 
 def _load_data() -> Dict[str, Any]:
@@ -134,6 +198,7 @@ class KamonDataset(torch.utils.data.Dataset):
     omit_from_test_val: data subsets to omit from test data
     pad: if True, pad to max length of all data.
     expr_to_label: If provided, create label set by extending this one
+    cache: if True, cache the dataset to disk for faster loading
   """
 
   def __init__(
@@ -148,9 +213,67 @@ class KamonDataset(torch.utils.data.Dataset):
       pad: bool=True,
       num_augmentations: int=5,
       expr_to_label: Tuple[Dict[str, int]]=None,
+      cache: bool=True,
   ):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
+    self.bigrams = collections.defaultdict(set)
+
+    cache_path = ""
+    if expr_to_label is None and _cache_enabled(cache):
+      omit_from_test_val_key = tuple(sorted(omit_from_test_val))
+      aug_key = num_augmentations if division == "train" else 0
+      cache_key = (
+        _CACHE_VERSION,
+        division,
+        image_size,
+        omit_edo,
+        omit_from_test_val_key,
+        aug_key,
+        _file_fingerprint(PARSED),
+        _file_fingerprint(TRANSLATED),
+        _file_fingerprint(DESCRIPTIONS),
+        _file_fingerprint(os.path.join(ROOT, "noising.py")),
+      )
+      cache_dir = _dataset_cache_dir()
+      try:
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, f"dataset_{division}_{_hash_key(cache_key)}.pt")
+      except OSError:
+        cache_path = ""
+
+    if cache_path and os.path.exists(cache_path):
+      try:
+        cached = torch.load(cache_path)
+        self.expr_to_label = cached["expr_to_label"]
+        self.label_to_expr = cached["label_to_expr"]
+        self.max_v = cached["max_v"]
+        self.end_token = cached["end_token"]
+        self.vocab_size = cached["vocab_size"]
+        self.max_len = cached["max_len"]
+        self.all_metadata = _unpack_metadata(cached["all_metadata"])
+        self.metadata = _unpack_metadata(cached["metadata"])
+
+        # Prepare image transform + label formatting (same as non-cached path)
+        self.dataset_mean = dataset_mean
+        self.dataset_std = dataset_std
+        self.transform = transforms.Compose(
+          [
+            transforms.Resize((self.image_size, self.image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(self.dataset_mean, self.dataset_std),
+          ]
+        )
+        self.one_hot = one_hot
+        self.pad = pad
+        self.padded = [self.end_token] * self.max_len
+        if division == "train":
+          self._create_bigram_table()
+        logging.info(f"Loaded dataset cache: {cache_path}")
+        return
+      except Exception as e:
+        logging.info(f"Failed to load dataset cache ({cache_path}), regenerating: {e}")
+
     self.all_metadata = []
     data = ALLDATA
     if expr_to_label:
@@ -161,7 +284,6 @@ class KamonDataset(torch.utils.data.Dataset):
     self.end_token = self.expr_to_label[END_TOKEN]
     self.vocab_size = self.end_token + 1
     self.max_len = -1
-    self.bigrams = collections.defaultdict(set)
     for elt in data:
       description = elt["description"]
       labels = [self.expr_to_label[e] for e in elt["parsed"]] + [self.end_token]
@@ -226,6 +348,23 @@ class KamonDataset(torch.utils.data.Dataset):
     self.one_hot = one_hot
     self.pad = pad
     self.padded = [self.end_token] * self.max_len
+
+    if cache_path:
+      try:
+        cached = {
+          "expr_to_label": self.expr_to_label,
+          "label_to_expr": self.label_to_expr,
+          "max_v": self.max_v,
+          "end_token": self.end_token,
+          "vocab_size": self.vocab_size,
+          "max_len": self.max_len,
+          "all_metadata": _pack_metadata(self.all_metadata),
+          "metadata": _pack_metadata(self.metadata),
+        }
+        _atomic_torch_save(cached, cache_path)
+        logging.info(f"Wrote dataset cache: {cache_path}")
+      except Exception as e:
+        logging.info(f"Failed to write dataset cache ({cache_path}): {e}")
 
   def __len__(self):
     return len(self.metadata)
