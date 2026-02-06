@@ -1,7 +1,7 @@
 # Kamon (家紋)
 
 ![Example
- Mon](https://github.com/SakanaAI/Kamon/blob/main/rabbit.jpg)
+ Mon](rabbit.jpg)
 
 立ち浪に真向き兎 ('frontwards facing rabbit in a standing wave')
 
@@ -10,7 +10,7 @@ This repository contains kamon (Japanese family crest) data from three sources:
 1. Edo period Ansei Bukan (安政武鑑, Armory of the Ansei Reign Years) from the [Center for Open Data in the Humanities](https://codh.rois.ac.jp/).
 
 2. Various open-source images from Wikimedia
-(see [here](https://github.com/SakanaAI/Kamon/blob/main/data/wiki/wiki_licenses.csv) for licensing details).
+   (see [here](data/wiki/wiki_licenses.csv) for licensing details).
 
 3. Images from https://github.com/Rebolforces/kamondataset. Note that since we are uncertain about the copyright
 status of these data, we do not provide these images directly. Instead, please navigate to that site,
@@ -83,7 +83,7 @@ plausible than others):
 See the examples in the `synthetic` subdirectory, for example:
 
 ![Synthetic Example
- Mon](https://github.com/SakanaAI/Kamon/blob/main/synthetic/synth_0002.png)
+ Mon](synthetic/synth_0002.png)
 
 月輪に覗き尻合わせ三つ紅葉 ('Peeking bottoms-together three maple leaves in a moon ring')
 
@@ -113,7 +113,7 @@ A baseline model using
 [VGG](https://huggingface.co/learn/computer-vision-course/en/unit2/cnns/vgg) is
 provided.  The architecture is given schematically below:
 
-![VGG model architecture](https://github.com/SakanaAI/Kamon/blob/main/vgg.jpg)
+![VGG model architecture](vgg.jpg)
 
 The input image is replicated _N_ times, where _N_ is the maximum token length
 of the output text. The image is optionally masked with a position-specific
@@ -136,7 +136,7 @@ A training script (with masking on) can be found in `train.sh` and an inference
 script in `test.sh`.
 
 Decoding output on the test set from one training run can be seen
-[here](https://github.com/SakanaAI/Kamon/blob/main/test_decode.jsonl).  Note that this training and evaluation
+[here](test_decode.jsonl). Note that this training and evaluation
 omits the Edo-period data.
 
 A script for generating an HTML page visualizing the inference output can be found in `visualize_outputs.py`.
