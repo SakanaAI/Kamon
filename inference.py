@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone inference script for VGG-based Kamon image-to-text model."""
+"""Standalone inference script for Kamon image-to-text models."""
 
 import os
 import sys
@@ -21,6 +21,13 @@ from vgg_image_to_text_model import VGGImageToTextModel
 # Define command line flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('checkpoint_path', '', 'Path to checkpoint file (.pt)')
+flags.DEFINE_enum(
+    'model',
+    'auto',
+    ['auto', 'vgg', 'vit_decoder'],
+    'Model architecture override (auto uses checkpoint config)',
+)
+flags.DEFINE_integer('start_token', -1, 'Override start token id for vit_decoder (-1 uses checkpoint config)')
 flags.DEFINE_string('dataset_subset', 'test', 'Dataset subset: train, val, or test')
 flags.DEFINE_boolean('omit_edo', True, 'Whether to omit Edo period images')
 flags.DEFINE_string('output_file', 'inference_results.jsonl', 'Output JSONL file')
@@ -47,7 +54,7 @@ flags.DEFINE_bool(
 )
 
 
-def load_checkpoint(checkpoint_path, device):
+def load_checkpoint(checkpoint_path, device, *, model_override: str = 'auto', start_token_override: int = -1):
     """Load model checkpoint and return model and metadata."""
     if not os.path.exists(checkpoint_path):
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
@@ -64,36 +71,64 @@ def load_checkpoint(checkpoint_path, device):
     # Try to get model config, with fallbacks for older checkpoints
     model_config = checkpoint.get('config', {})
     image_size = model_config.get('image_size', 224)
-    hidden_dim = model_config.get('hidden_dim', 512)
-    also_train_vgg = model_config.get('also_train_vgg', False)
-    use_masks = model_config.get('use_masks', True)  # Default to True for backward compatibility
 
-    # Infer ngram_length from the feature_combiner input dimension if not in config
-    if 'ngram_length' in model_config:
-        ngram_length = model_config['ngram_length']
+    checkpoint_model_name = model_config.get('model', 'vgg')
+    model_name = model_override if model_override != 'auto' else checkpoint_model_name
+    if model_name not in {'vgg', 'vit_decoder'}:
+        print(f"Warning: Unknown model '{model_name}', falling back to 'vgg'")
+        model_name = 'vgg'
+
+    checkpoint_start_token = model_config.get('start_token', 0)
+    start_token = start_token_override if start_token_override != -1 else checkpoint_start_token
+
+    if model_name == 'vgg':
+        hidden_dim = model_config.get('hidden_dim', 512)
+        also_train_vgg = model_config.get('also_train_vgg', False)
+        use_masks = model_config.get('use_masks', True)  # Default to True for backward compatibility
+
+        # Infer ngram_length from the feature_combiner input dimension if not in config
+        if 'ngram_length' in model_config:
+            ngram_length = model_config['ngram_length']
+        else:
+            # Infer from feature_combiner.0.weight shape
+            # Input dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+            # Assuming vgg_feature_dim = 4096
+            vgg_feature_dim = 4096
+            feature_combiner_input_dim = checkpoint['model_state_dict']['feature_combiner.0.weight'].shape[1]
+
+            # Solve: feature_combiner_input_dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+            # Rearrange: (feature_combiner_input_dim - vgg_feature_dim) = (ngram_length - 1) * (vgg_feature_dim + vocab_size)
+            # ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) / (vgg_feature_dim + vocab_size)
+            ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) // (vgg_feature_dim + vocab_size)
+            print(f"Inferred ngram_length = {ngram_length} from checkpoint dimensions")
+
+        # Create model
+        model = VGGImageToTextModel(
+            vocab_size=vocab_size,
+            max_seq_len=max_seq_len,
+            image_size=image_size,
+            ngram_length=ngram_length,
+            hidden_dim=hidden_dim,
+            also_train_vgg=also_train_vgg,
+            use_masks=use_masks,
+        )
+    elif model_name == 'vit_decoder':
+        from vit_model import DecoderImageCaptioner
+
+        model = DecoderImageCaptioner(
+            encoder_name=model_config.get('vit_encoder_name', 'vit_base_patch16_224'),
+            seq_len=max_seq_len,
+            vocab_size=vocab_size,
+            n_heads=model_config.get('vit_n_heads', 8),
+            d_model=model_config.get('vit_d_model', 512),
+            n_layers=model_config.get('vit_n_layers', 6),
+            dropout=model_config.get('vit_dropout', 0.1),
+            token_dropout=model_config.get('vit_token_dropout', 0.0),
+            train_backbone=model_config.get('vit_train_backbone', False),
+            enc_proj_rank=model_config.get('vit_enc_proj_rank', 0),
+        )
     else:
-        # Infer from feature_combiner.0.weight shape
-        # Input dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
-        # Assuming vgg_feature_dim = 4096
-        vgg_feature_dim = 4096
-        feature_combiner_input_dim = checkpoint['model_state_dict']['feature_combiner.0.weight'].shape[1]
-
-        # Solve: feature_combiner_input_dim = vgg_feature_dim + (ngram_length - 1) * (vgg_feature_dim + vocab_size)
-        # Rearrange: (feature_combiner_input_dim - vgg_feature_dim) = (ngram_length - 1) * (vgg_feature_dim + vocab_size)
-        # ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) / (vgg_feature_dim + vocab_size)
-        ngram_length = 1 + (feature_combiner_input_dim - vgg_feature_dim) // (vgg_feature_dim + vocab_size)
-        print(f"Inferred ngram_length = {ngram_length} from checkpoint dimensions")
-
-    # Create model
-    model = VGGImageToTextModel(
-        vocab_size=vocab_size,
-        max_seq_len=max_seq_len,
-        image_size=image_size,
-        ngram_length=ngram_length,
-        hidden_dim=hidden_dim,
-        also_train_vgg=also_train_vgg,
-        use_masks=use_masks,
-    )
+        raise ValueError(f"Unknown model: {model_name}")
 
     # Load model weights
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -101,17 +136,28 @@ def load_checkpoint(checkpoint_path, device):
     model.eval()
 
     metadata = {
+        'model': model_name,
         'vocab_size': vocab_size,
         'max_seq_len': max_seq_len,
         'end_token': end_token,
         'label_to_expr': label_to_expr,
         'image_size': image_size,
+        'start_token': start_token,
         'step': checkpoint.get('step', 'unknown'),
         'epoch': checkpoint.get('epoch', 'unknown'),
         'val_loss': checkpoint.get('val_loss', checkpoint.get('loss', 'unknown'))
     }
 
     return model, metadata
+
+
+def generate_tokens(model, model_name, images, end_token, *, start_token: int, max_length: int, bigrams=None):
+    if model_name == 'vgg':
+        tokens, _ = model.generate(images, end_token, max_length=max_length, bigrams=bigrams)
+        return tokens
+    if model_name == 'vit_decoder':
+        return model.generate(images, end_token=end_token, start_token=start_token, max_length=max_length)
+    raise ValueError(f"Unknown model: {model_name}")
 
 
 def normalize_description(desc):
@@ -152,8 +198,19 @@ def build_description_to_images_map(train_metadata):
     return desc_to_images
 
 
-def run_inference(model, dataloader, device, label_to_expr, end_token,
-                  dataset_metadata, train_desc_to_images, bigrams):
+def run_inference(
+    model,
+    dataloader,
+    device,
+    label_to_expr,
+    end_token,
+    dataset_metadata,
+    train_desc_to_images,
+    bigrams,
+    *,
+    model_name: str,
+    start_token: int,
+):
     """Run inference on dataset and return results."""
     model.eval()
     results = []
@@ -166,7 +223,15 @@ def run_inference(model, dataloader, device, label_to_expr, end_token,
             target_tokens = target_tokens.to(device)
 
             # Generate predictions
-            pred_tokens, pred_masks = model.generate(images, end_token, bigrams=bigrams)
+            pred_tokens = generate_tokens(
+                model,
+                model_name,
+                images,
+                end_token,
+                start_token=start_token,
+                max_length=target_tokens.shape[1],
+                bigrams=bigrams,
+            )
 
             batch_size = images.size(0)
 
@@ -257,9 +322,15 @@ def main(argv):
 
     try:
         # Load checkpoint and create model
-        model, checkpoint_metadata = load_checkpoint(FLAGS.checkpoint_path, device)
+        model, checkpoint_metadata = load_checkpoint(
+            FLAGS.checkpoint_path,
+            device,
+            model_override=FLAGS.model,
+            start_token_override=FLAGS.start_token,
+        )
 
         print(f"Loaded model from step {checkpoint_metadata['step']}, epoch {checkpoint_metadata['epoch']}")
+        print(f"Model: {checkpoint_metadata['model']}")
         print(f"Vocabulary size: {checkpoint_metadata['vocab_size']}")
         print(f"Max sequence length: {checkpoint_metadata['max_seq_len']}")
         if checkpoint_metadata['val_loss'] != 'unknown':
@@ -352,6 +423,8 @@ def main(argv):
             dataset_metadata,
             train_desc_to_images,
             bigrams,
+            model_name=checkpoint_metadata['model'],
+            start_token=checkpoint_metadata['start_token'],
         )
 
         # Save results

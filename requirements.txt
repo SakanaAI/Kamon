@@ -3,5 +3,6 @@ jaconv
 jsonlines
 numpy
 pillow
+timm
 torch
 torchvision

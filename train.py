@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Training script for VGG-based image-to-text model for Kamon descriptions."""
+"""Training script for Kamon image-to-text models."""
 
 import os
 import sys
@@ -24,12 +24,23 @@ from vgg_image_to_text_model import VGGImageToTextModel
 
 # Define command line flags
 FLAGS = flags.FLAGS
+flags.DEFINE_enum(
+    'model',
+    'vgg',
+    ['vgg', 'vit_decoder'],
+    'Model architecture to train',
+)
 flags.DEFINE_integer('image_size', 224, 'Input image size')
 flags.DEFINE_integer('num_train_augmentations', 9, 'Number of training augmentations')
 flags.DEFINE_integer('batch_size', 16, 'Batch size for training')
 flags.DEFINE_integer('num_epochs', 100, 'Number of training epochs')
 flags.DEFINE_float('learning_rate', 1e-4, 'Learning rate')
 flags.DEFINE_integer('checkpoint_steps', 10000, 'Steps between checkpoints')
+flags.DEFINE_integer(
+    'early_stop_patience',
+    0,
+    'Stop training if total character edit distance does not improve for this many eval checks (0 disables)',
+)
 flags.DEFINE_string('checkpoint_dir', 'checkpoints', 'Directory to save checkpoints')
 flags.DEFINE_string('output_dir', 'outputs', 'Directory to save outputs')
 flags.DEFINE_boolean('also_train_vgg', False, 'Whether to train VGG parameters')
@@ -45,6 +56,22 @@ flags.DEFINE_list('omit_from_test_val', [], 'Omit these classes from test/val')
 flags.DEFINE_string('parsed', None, 'Custom parsed data')
 flags.DEFINE_string('translated', None, 'Custom translated data')
 flags.DEFINE_string('descriptions', None, 'Custom descriptions')
+# ViT decoder flags
+flags.DEFINE_string('vit_encoder_name', 'vit_base_patch16_224', 'timm encoder name (ViT models only)')
+flags.DEFINE_integer('vit_n_heads', 8, 'Number of attention heads (ViT models only)')
+flags.DEFINE_integer('vit_d_model', 512, 'Decoder model dim (vit_decoder only)')
+flags.DEFINE_integer('vit_n_layers', 2, 'Number of decoder layers (vit_decoder only)')
+flags.DEFINE_float('vit_dropout', 0.1, 'Dropout probability (ViT models only)')
+flags.DEFINE_float('vit_token_dropout', 0.0, 'Token dropout probability for image patch tokens (ViT models only)')
+flags.DEFINE_boolean('vit_train_backbone', False, 'Whether to train the encoder/backbone (ViT models only)')
+flags.DEFINE_integer(
+    'vit_enc_proj_rank',
+    0,
+    'Low-rank bottleneck rank for encoder->decoder projection (vit_decoder only, 0 disables)',
+)
+flags.DEFINE_integer('start_token', 0, 'Start token id (vit_decoder only)')
+flags.DEFINE_float('label_smoothing', 0.0, 'Label smoothing factor (0.0 to 1.0)')
+flags.DEFINE_float('weight_decay', 0.0, 'Weight decay for AdamW optimizer')
 
 
 def preprocess_text_for_comparison(text):
@@ -133,6 +160,26 @@ def save_mask_images(masks, output_dir, prefix, vocab, label_to_expr):
             img.save(img_path)
 
 
+def forward_with_optional_masks(model, model_name, images, target_tokens, *, start_token: int):
+    if model_name == 'vgg':
+        logits, masks = model(images, target_tokens)
+        return logits, masks
+    if model_name == 'vit_decoder':
+        logits = model(images, target_tokens, start_token=start_token)
+        return logits, None
+    raise ValueError(f"Unknown model: {model_name}")
+
+
+def generate_with_optional_masks(model, model_name, images, end_token, *, start_token: int, max_length: int):
+    if model_name == 'vgg':
+        tokens, masks = model.generate(images, end_token, max_length=max_length)
+        return tokens, masks
+    if model_name == 'vit_decoder':
+        tokens = model.generate(images, end_token=end_token, start_token=start_token, max_length=max_length)
+        return tokens, None
+    raise ValueError(f"Unknown model: {model_name}")
+
+
 def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_token, output_dir, step):
     """Evaluate model on validation set and save results."""
     model.eval()
@@ -142,7 +189,7 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
     all_predictions = []
     all_masks = []
 
-    criterion = nn.CrossEntropyLoss(ignore_index=-1)
+    criterion = nn.CrossEntropyLoss(ignore_index=-1, label_smoothing=FLAGS.label_smoothing)
 
     with torch.no_grad():
         for batch_idx, (images, target_tokens) in enumerate(val_loader):
@@ -150,7 +197,9 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
             target_tokens = target_tokens.to(device)
 
             # Forward pass
-            logits, masks = model(images, target_tokens)
+            logits, _ = forward_with_optional_masks(
+                model, FLAGS.model, images, target_tokens, start_token=FLAGS.start_token
+            )
 
             # Calculate loss
             batch_size, seq_len, vocab_size = logits.shape
@@ -162,7 +211,14 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
             total_samples += batch_size
 
             # Generate predictions
-            pred_tokens, pred_masks = model.generate(images, end_token)
+            pred_tokens, pred_masks = generate_with_optional_masks(
+                model,
+                FLAGS.model,
+                images,
+                end_token,
+                start_token=FLAGS.start_token,
+                max_length=target_tokens.shape[1],
+            )
 
             # Convert predictions to text and include ground truth
             for i in range(batch_size):
@@ -201,10 +257,11 @@ def evaluate_model(model, val_loader, device, vocab_size, label_to_expr, end_tok
                     'reference_tokens': gt_tokens_list
                 })
 
-            all_masks.append(pred_masks.cpu())
+            if pred_masks is not None:
+                all_masks.append(pred_masks.cpu())
 
             # Save mask images for first few batches
-            if batch_idx < 5:  # Save masks for first 5 batches
+            if pred_masks is not None and batch_idx < 5:  # Save masks for first 5 batches
                 save_mask_images(
                     pred_masks.cpu(),
                     os.path.join(output_dir, f'step_{step}'),
@@ -310,26 +367,47 @@ def main(argv):
 
     # Initialize model
     print("Initializing model...")
-    print(f"Using masks: {FLAGS.use_masks}")
-    model = VGGImageToTextModel(
-        vocab_size=vocab_size,
-        max_seq_len=max_seq_len,
-        image_size=FLAGS.image_size,
-        ngram_length=FLAGS.ngram_length,
-        hidden_dim=FLAGS.hidden_dim,
-        also_train_vgg=FLAGS.also_train_vgg,
-        use_masks=FLAGS.use_masks,
-    ).to(device)
+    if FLAGS.model == 'vgg':
+        print(f"Model: vgg (use_masks={FLAGS.use_masks})")
+        model = VGGImageToTextModel(
+            vocab_size=vocab_size,
+            max_seq_len=max_seq_len,
+            image_size=FLAGS.image_size,
+            ngram_length=FLAGS.ngram_length,
+            hidden_dim=FLAGS.hidden_dim,
+            also_train_vgg=FLAGS.also_train_vgg,
+            use_masks=FLAGS.use_masks,
+        ).to(device)
+    elif FLAGS.model == 'vit_decoder':
+        print(f"Model: vit_decoder (encoder={FLAGS.vit_encoder_name})")
+        from vit_model import DecoderImageCaptioner
+
+        model = DecoderImageCaptioner(
+            encoder_name=FLAGS.vit_encoder_name,
+            seq_len=max_seq_len,
+            vocab_size=vocab_size,
+            n_heads=FLAGS.vit_n_heads,
+            d_model=FLAGS.vit_d_model,
+            n_layers=FLAGS.vit_n_layers,
+            dropout=FLAGS.vit_dropout,
+            token_dropout=FLAGS.vit_token_dropout,
+            train_backbone=FLAGS.vit_train_backbone,
+            enc_proj_rank=FLAGS.vit_enc_proj_rank,
+        ).to(device)
+    else:
+        raise ValueError(f"Unknown model: {FLAGS.model}")
 
     # Initialize optimizer and loss function
-    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
-    criterion = nn.CrossEntropyLoss(ignore_index=-1)
+    optimizer = optim.AdamW(model.parameters(), lr=FLAGS.learning_rate, weight_decay=FLAGS.weight_decay)
+    criterion = nn.CrossEntropyLoss(ignore_index=-1, label_smoothing=FLAGS.label_smoothing)
 
     # Training loop
     print("Starting training...")
     global_step = 0
     best_edit_distance = float('inf')
     best_checkpoint_path = None
+    no_improve_checks = 0
+    stop_training = False
 
     for epoch in range(FLAGS.num_epochs):
         model.train()
@@ -341,7 +419,9 @@ def main(argv):
             target_tokens = target_tokens.to(device)
 
             # Forward pass
-            logits, masks = model(images, target_tokens)
+            logits, _ = forward_with_optional_masks(
+                model, FLAGS.model, images, target_tokens, start_token=FLAGS.start_token
+            )
 
             # Calculate loss
             batch_size, seq_len, vocab_size_out = logits.shape
@@ -350,10 +430,13 @@ def main(argv):
 
             ce_loss = criterion(logits_flat, targets_flat)
 
-            # Add mask diversity loss to encourage position-specific masks
-            diversity_loss = model.get_mask_diversity_loss(weight=0.001)  # Small weight
-
-            loss = ce_loss + diversity_loss
+            if FLAGS.model == 'vgg' and FLAGS.use_masks:
+                # Add mask diversity loss to encourage position-specific masks
+                diversity_loss = model.get_mask_diversity_loss(weight=0.001)  # Small weight
+                loss = ce_loss + diversity_loss
+            else:
+                diversity_loss = None
+                loss = ce_loss
 
             # Backward pass
             optimizer.zero_grad()
@@ -366,8 +449,16 @@ def main(argv):
 
             # Print progress
             if batch_idx % 100 == 0:
-                print(f"Epoch {epoch}, Batch {batch_idx}, CE Loss: {ce_loss.item():.4f}, "
-                      f"Diversity Loss: {diversity_loss.item():.6f}, Total Loss: {loss.item():.4f}")
+                if diversity_loss is None:
+                    print(
+                        f"Epoch {epoch}, Batch {batch_idx}, CE Loss: {ce_loss.item():.4f}, "
+                        f"Total Loss: {loss.item():.4f}"
+                    )
+                else:
+                    print(
+                        f"Epoch {epoch}, Batch {batch_idx}, CE Loss: {ce_loss.item():.4f}, "
+                        f"Diversity Loss: {diversity_loss.item():.6f}, Total Loss: {loss.item():.4f}"
+                    )
 
             # Evaluation and best model saving
             if global_step % FLAGS.checkpoint_steps == 0:
@@ -385,6 +476,7 @@ def main(argv):
                 if total_edit_distance < best_edit_distance:
                     print(f"New best edit distance: {total_edit_distance} (previous: {best_edit_distance})")
                     best_edit_distance = total_edit_distance
+                    no_improve_checks = 0
 
                     # Remove previous best checkpoint if it exists
                     if best_checkpoint_path and os.path.exists(best_checkpoint_path):
@@ -408,17 +500,56 @@ def main(argv):
                         'max_seq_len': max_seq_len,
                         'end_token': end_token,
                         'label_to_expr': label_to_expr,
+                        'config': {
+                            'model': FLAGS.model,
+                            'image_size': FLAGS.image_size,
+                            'ngram_length': FLAGS.ngram_length,
+                            'hidden_dim': FLAGS.hidden_dim,
+                            'also_train_vgg': FLAGS.also_train_vgg,
+                            'use_masks': FLAGS.use_masks,
+                            'vit_encoder_name': FLAGS.vit_encoder_name,
+                            'vit_n_heads': FLAGS.vit_n_heads,
+                            'vit_d_model': FLAGS.vit_d_model,
+                            'vit_n_layers': FLAGS.vit_n_layers,
+                            'vit_dropout': FLAGS.vit_dropout,
+                            'vit_token_dropout': FLAGS.vit_token_dropout,
+                            'vit_train_backbone': FLAGS.vit_train_backbone,
+                            'vit_enc_proj_rank': FLAGS.vit_enc_proj_rank,
+                            'start_token': FLAGS.start_token,
+                        },
                     }, best_checkpoint_path)
                     print(f"Saved best checkpoint: {os.path.basename(best_checkpoint_path)}")
                 else:
                     print(f"Edit distance {total_edit_distance} not better than best {best_edit_distance}, not saving checkpoint")
+                    no_improve_checks += 1
+                    if FLAGS.early_stop_patience > 0:
+                        print(
+                            f"No improvement for {no_improve_checks}/{FLAGS.early_stop_patience} evaluation checks"
+                        )
+                        if no_improve_checks >= FLAGS.early_stop_patience:
+                            print(
+                                "Early stopping: validation total character edit distance "
+                                f"has not improved for {no_improve_checks} checks."
+                            )
+                            stop_training = True
 
                 model.train()  # Return to training mode
+                if stop_training:
+                    break
 
         avg_epoch_loss = epoch_loss / num_batches
         print(f"Epoch {epoch} completed. Average loss: {avg_epoch_loss:.4f}")
+        if stop_training:
+            break
 
-    print("Training completed!")
+    if stop_training:
+        print("Training stopped early (early stopping).")
+        if best_checkpoint_path and os.path.exists(best_checkpoint_path):
+            print(f"Restoring best checkpoint before final evaluation: {os.path.basename(best_checkpoint_path)}")
+            best_ckpt = torch.load(best_checkpoint_path, map_location=device)
+            model.load_state_dict(best_ckpt['model_state_dict'])
+    else:
+        print("Training completed!")
 
     # Final evaluation
     print("Running final evaluation...")
@@ -439,11 +570,21 @@ def main(argv):
         'end_token': end_token,
         'label_to_expr': label_to_expr,
         'config': {
+            'model': FLAGS.model,
             'image_size': FLAGS.image_size,
             'ngram_length': FLAGS.ngram_length,
             'hidden_dim': FLAGS.hidden_dim,
             'also_train_vgg': FLAGS.also_train_vgg,
             'use_masks': FLAGS.use_masks,
+            'vit_encoder_name': FLAGS.vit_encoder_name,
+            'vit_n_heads': FLAGS.vit_n_heads,
+            'vit_d_model': FLAGS.vit_d_model,
+            'vit_n_layers': FLAGS.vit_n_layers,
+            'vit_dropout': FLAGS.vit_dropout,
+            'vit_token_dropout': FLAGS.vit_token_dropout,
+            'vit_train_backbone': FLAGS.vit_train_backbone,
+            'vit_enc_proj_rank': FLAGS.vit_enc_proj_rank,
+            'start_token': FLAGS.start_token,
         }
     }, final_checkpoint_path)
 
