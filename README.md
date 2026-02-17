@@ -89,7 +89,7 @@ See the examples in the `synthetic` subdirectory, for example:
 
 The [HuggingFace
 repository](https://huggingface.co/datasets/SakanaAI/Kamon/blob/main/synthetic_examples.zip)
-contains a set of 10,000 synthetic examples.
+contains a set of 10,000 synthetic examples.  To use these, put the JPEGs in the subdirectory `synthetic_examples`.
 
 # Training and inference with baseline VGG-based model
 

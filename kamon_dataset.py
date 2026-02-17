@@ -218,6 +218,7 @@ class KamonDataset(torch.utils.data.Dataset):
     assert division in ["train", "val", "test"]
     self.image_size = image_size
     self.bigrams = collections.defaultdict(set)
+    self.num_augmentations = num_augmentations
 
     cache_path = ""
     if expr_to_label is None and _cache_enabled(cache):

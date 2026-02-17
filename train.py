@@ -300,6 +300,10 @@ def main(argv):
 
     # Load datasets
     print("Loading datasets...")
+    # Note that to use the synthetic examples you will need to go to the
+    # HuggingFace repository at https://huggingface.co/datasets/SakanaAI/Kamon,
+    # download the dataset and put the JPEGS in the `synthetic_examples`
+    # subdirectory.
     if FLAGS.synthetic:
         print("Using synthetic data...")
         parsed = "synthetic_examples/synthetic_parsed.jsonl"
