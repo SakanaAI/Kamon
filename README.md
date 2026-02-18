@@ -140,3 +140,7 @@ Decoding output on the test set from one training run can be seen
 omits the Edo-period data.
 
 A script for generating an HTML page visualizing the inference output can be found in `visualize_outputs.py`.
+
+# Reference
+
+Richard Sproat. [家紋—画像・テキストの新たな チャレンジ](https://rws.xoba.com/newindex/kamon.pdf), ANLP, Utsunomiya, March 10-12, 2026.
