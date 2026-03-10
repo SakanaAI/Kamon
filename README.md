@@ -143,4 +143,6 @@ A script for generating an HTML page visualizing the inference output can be fou
 
 # Reference
 
+If you use this work, we would appreciate a citation to:
+
 Richard Sproat. [家紋—画像・テキストの新たな チャレンジ](https://www.anlp.jp/proceedings/annual_meeting/2026/pdf_dir/C4-3.pdf), ANLP, Utsunomiya, March 10-12, 2026.
